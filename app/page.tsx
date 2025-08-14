@@ -1,6 +1,5 @@
 
 "use client";
-export const revalidate = 3600;
 import React from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
