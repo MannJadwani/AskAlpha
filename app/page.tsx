@@ -10,8 +10,8 @@ import Iphone15Pro from "@/components/magicui/iphone-15-pro";
 import { Safari } from "@/components/magicui/safari";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import FlowingMenu from "../components/ui/jsrepo/FlowingMenu/FlowingMenu";
-import ScrollReveal from "../components/ui/jsrepo/ScrollReveal/ScrollReveal";
+import FlowingMenu from "./components/ui/jsrepo/FlowingMenu/FlowingMenu";
+import ScrollReveal from "./components/ui/jsrepo/ScrollReveal/ScrollReveal";
 
 // 3D background (client-only)
 

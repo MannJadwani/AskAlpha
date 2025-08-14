@@ -66,16 +66,17 @@ export default function Sidebar({
 
   // Navigation items with their paths and icons
   const navItems = [
-    // {
-    //   name: 'Company Reports',
-    //   path: '/company-report',
-    //   icon: (<FileText className="h-4 w-4 text-black dark:text-neutral-400" />),
-    // },
     {
       name: 'AI Recommendations',
       path: '/recommendation',
       icon: (<Sparkles className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
+    {
+      name: 'Generate Full Reports',
+      path: '/company-report',
+      icon: (<FileText className="h-4 w-4 text-black dark:text-neutral-400" />),
+    },
+    
     // {
     //   name: 'My Reports',
     //   path: '/my-reports',
