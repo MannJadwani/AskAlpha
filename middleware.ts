@@ -7,6 +7,11 @@ export async function middleware(request: NextRequest) {
   console.log('Token in middleware:', token)
   console.log('Visiting path:', request.nextUrl.pathname);
 
+  // Allow public access to the homepage
+  if (request.nextUrl.pathname === '/') {
+    return NextResponse.next()
+  }
+
   if (!token) {
     console.log('No token found, redirecting to /sign-in')
     return NextResponse.redirect(new URL('/sign-in', request.url))
@@ -23,5 +28,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/company-report','/','/my-reports','/recommendation','/analytics','/pricing'],
+  matcher: ['/company-report','/my-reports','/recommendation','/analytics','/pricing'],
 }
