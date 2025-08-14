@@ -1,6 +1,6 @@
 
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { ArrowRight, Play, Check, Shield, RefreshCw, BarChart3, Zap, Sparkles, Download, Layout, Cog, PieChart, Search, Bell, Database, BookOpen, Rocket, Plug, Box, Lock, Settings, Users, Briefcase, Newspaper, Building2, Globe } from "lucide-react";
@@ -91,6 +91,14 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
 };
 
 export default function AskAlphaLanding() {
+  const [heroInput, setHeroInput] = useState("");
+  const handleAnalyzeClick = () => {
+    const q = heroInput.trim();
+    if (!q) return;
+    const params = new URLSearchParams({ symbol: q });
+    window.location.href = `/recommendation?${params.toString()}`;
+  };
+
   const flowingMenuItems = [
     { link: '#', text: 'Mojave', image: 'https://picsum.photos/600/400?random=1' },
     { link: '#', text: 'Sonoma', image: 'https://picsum.photos/600/400?random=2' },
@@ -191,10 +199,10 @@ export default function AskAlphaLanding() {
       <FloatingDock
         items={[
           { title: 'Features', icon: <Sparkles className="h-5 w-5" />, href: '#features' },
-          { title: 'Automation', icon: <Cog className="h-5 w-5" />, href: '#automation' },
-          { title: 'Integrations', icon: <Plug className="h-5 w-5" />, href: '#integrations' },
+          { title: 'Use cases', icon: <Users className="h-5 w-5" />, href: '#personas' },
+          { title: 'Recommendation', icon: <BarChart3 className="h-5 w-5" />, href: '/recommendation' },
+          { title: 'Pricing', icon: <PieChart className="h-5 w-5" />, href: '/pricing' },
           { title: 'Templates', icon: <Layout className="h-5 w-5" />, href: '#templates' },
-          { title: 'Docs', icon: <BookOpen className="h-5 w-5" />, href: '/landing#features' },
           { title: 'Get started', icon: <Rocket className="h-5 w-5" />, href: '/sign-up' },
         ]}
         desktopClassName="fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
@@ -234,9 +242,12 @@ export default function AskAlphaLanding() {
                   type="text"
                   placeholder="Enter stock symbol or company name (e.g., RELIANCE, AAPL, TCS)"
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 pr-36 text-sm text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-white/20 focus:border-transparent"
+                  value={heroInput}
+                  onChange={(e) => setHeroInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAnalyzeClick(); } }}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <ShinyButton className="px-5 py-2">Analyze</ShinyButton>
+                  <ShinyButton className="px-5 py-2" onClick={handleAnalyzeClick}>Analyze</ShinyButton>
                 </div>
               </div>
               <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-400">

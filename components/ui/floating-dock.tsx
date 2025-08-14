@@ -44,67 +44,63 @@ const FloatingDockMobile = ({
         {open && (
           <motion.div
             layoutId="nav"
-            className="absolute inset-x-0 bottom-full mb-2 flex flex-col gap-2"
+            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2"
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {/* Home logo at top (wide, same length as CTA) */}
-            <motion.div
-              key="home-logo"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-            >
+            {/* Floating dock container */}
+            <div className="flex items-center gap-2 rounded-2xl bg-white/10 p-2 ring-1 ring-inset ring-white/20 backdrop-blur-md shadow-lg">
+              {/* Home logo */}
               <a href="/" className="flex items-center justify-center">
-                <div className="group relative inline-flex items-center justify-center gap-2 rounded-2xl h-10 px-5 bg-white/5 ring-1 ring-inset ring-white/10 text-zinc-200">
-                  <span className="relative z-10 flex items-center">
-                    <span className="relative h-5 w-auto">
-                      <Image src="/assets/logo/icon.png" alt="AskAlpha" width="110" height="20" className="h-5 w-auto object-contain" />
-                    </span>
-                  </span>
-                  <span className="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-white/10" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-inset ring-white/20">
+                  <div className="relative h-4 w-4">
+                    <Image src="/assets/logo/icon.png" alt="AskAlpha" width="16" height="16" className="h-4 w-4 object-contain" />
+                  </div>
                 </div>
               </a>
-            </motion.div>
-            {items.map((item, idx) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                exit={{
-                  opacity: 0,
-                  y: 10,
-                  transition: {
-                    delay: idx * 0.05,
-                  },
-                }}
-                transition={{ delay: (items.length - 1 - idx) * 0.05 }}
+              
+              {/* Navigation items */}
+              {items.slice(0, -1).map((item, idx) => (
+                <motion.a
+                  key={item.title}
+                  href={item.href}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-inset ring-white/10 text-zinc-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05, duration: 0.2 }}
+                >
+                  <div className="h-4 w-4">{item.icon}</div>
+                </motion.a>
+              ))}
+              
+              {/* Get started button - smaller for mobile dock */}
+              <motion.a
+                href={items[items.length - 1]?.href}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.2 }}
               >
-                {item.title === "Get started" ? (
-                  <a href={item.href} className="flex items-center justify-center">
-                    <ShinyButton className="h-10 px-5 !bg-white !text-black !ring-white/20">Get started</ShinyButton>
-                  </a>
-                ) : (
-                  <a
-                    href={item.href}
-                    key={item.title}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 ring-1 ring-inset ring-white/10 text-zinc-200"
-                  >
-                    <div className="h-4 w-4">{item.icon}</div>
-                  </a>
-                )}
-              </motion.div>
-            ))}
+                <ShinyButton className="h-10 px-4 !bg-white !text-black !ring-white/20 text-xs font-semibold">
+                  Start
+                </ShinyButton>
+              </motion.a>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-      <button
+      
+      {/* Toggle button */}
+      <motion.button
         onClick={() => setOpen(!open)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 ring-1 ring-inset ring-white/10 text-zinc-200 backdrop-blur"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 ring-1 ring-inset ring-white/20 text-zinc-200 backdrop-blur-md shadow-lg hover:bg-white/15 transition-all duration-200"
+        whileTap={{ scale: 0.95 }}
+        animate={{ rotate: open ? 180 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <IconLayoutNavbarCollapse className="h-5 w-5 text-zinc-300" />
-      </button>
+      </motion.button>
     </div>
   );
 };

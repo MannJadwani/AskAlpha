@@ -46,6 +46,22 @@ export default function RecommendationPage() {
   const [error, setError] = useState<string | null>(null);
   const [renderedMarkdown, setRenderedMarkdown] = useState<string>('');
 
+  // Prefill from query string and auto-trigger
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get('symbol');
+    if (symbol && !companyInput) {
+      setCompanyInput(symbol);
+      // Auto-submit shortly after mount
+      setTimeout(() => {
+        const form = document.getElementById('recommendation-form');
+        if (form) {
+          (form as HTMLFormElement).requestSubmit();
+        }
+      }, 50);
+    }
+  }, []);
 
   useEffect(() => {
     console.log('Current User recomendation page:', currentUser);
@@ -252,7 +268,7 @@ export default function RecommendationPage() {
               animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 shadow-2xl"
             >
-              <form onSubmit={handleAnalyze} className="space-y-6">
+              <form id="recommendation-form" onSubmit={handleAnalyze} className="space-y-6">
                 <div>
                   <label htmlFor="company" className="block text-sm font-semibold text-zinc-200 mb-3">
                     Company Name or Ticker Symbol
