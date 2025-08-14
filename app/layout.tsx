@@ -5,7 +5,7 @@ import "./globals.css";
 import MainLayout from "@/components/MainLayout";
 // import { useEffect } from "react";
 // import { initializeDatabase } from '../lib/db';
-import { prisma } from '@/lib/supabaseDB';
+// import { prisma } from '@/lib/supabaseDB';
 import { initializeDatabase } from "@/lib/db";
 
 
