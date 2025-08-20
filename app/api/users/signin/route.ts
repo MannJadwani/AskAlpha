@@ -12,10 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
+    // Case-insensitive email lookup
     const { data: users, error } = await supabase
       .from('app_user')
       .select('*')
-      .eq('email', email)
+      .ilike('email', email)
       .limit(1);
 
     if (error) {
@@ -25,9 +26,32 @@ export async function POST(request: NextRequest) {
 
     const user = users?.[0];
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
 
-    if (!user || !isMatch) {
+    // First try bcrypt compare; handle legacy plaintext passwords by upgrading on-the-fly
+    let isMatch = false;
+    try {
+      if (user.password) {
+        isMatch = await bcrypt.compare(password, user.password);
+      }
+    } catch (e) {
+      // ignore and fall back to plaintext check below
+    }
+
+    if (!isMatch && user.password && password === user.password) {
+      isMatch = true;
+      // Upgrade legacy plaintext password to bcrypt hash
+      try {
+        const newHash = await bcrypt.hash(password, 10);
+        await supabase.from('app_user').update({ password: newHash }).eq('id', user.id);
+      } catch (upgradeErr) {
+        console.warn('Failed to upgrade legacy password hash:', upgradeErr);
+      }
+    }
+
+    if (!isMatch) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
