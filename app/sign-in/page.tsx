@@ -257,16 +257,15 @@ export default function SignIn() {
           </form>
 
           {/* Divider */}
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white/5 backdrop-blur-sm px-3 text-zinc-400">Or continue with</span>
-              </div>
-            </div>
+        <div className="mt-4">
+          <div className="flex items-center">
+            <div className="flex-grow border-t border-white/10"></div>
+            <span className="px-3 text-xs text-zinc-400">Or continue with</span>
+            <div className="flex-grow border-t border-white/10"></div>
           </div>
+        </div>
+
+
 
           {/* Google Sign In */}
           <button
