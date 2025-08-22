@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 // import supabase from '../../lib/supabase';
 import { ChartBarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { ShinyButton } from '@/components/magicui/shiny-button';
+import supabase from '../../lib/supabase';
 
 // Component to handle registration success message
 function RegistrationMessage() {
@@ -44,6 +45,36 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    setError('');
+
+    try {
+      // Initiate Google OAuth flow
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      console.error('Google OAuth error:', err);
+      setError('Failed to sign up with Google. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +113,7 @@ export default function SignIn() {
     } catch (err) {
       setError('Failed to sign in. Please try again.');
       console.error(err);
-    }finally{
+    } finally {
       setLoading(false);
     }
   };
@@ -103,11 +134,11 @@ export default function SignIn() {
       <div className="w-full max-w-md mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-6">
-            <Link href="/" className="inline-flex items-center space-x-2 mb-4">
+          <Link href="/" className="inline-flex items-center space-x-2 mb-4">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5 ring-1 ring-inset ring-white/10">
               <ChartBarIcon className="w-6 h-6 text-zinc-200" />
             </div>
-              <span className="text-xl font-bold text-zinc-200">AskAlpha</span>
+            <span className="text-xl font-bold text-zinc-200">AskAlpha</span>
           </Link>
           <h1 className="text-2xl font-bold text-white mb-1">
             Welcome Back
@@ -151,7 +182,7 @@ export default function SignIn() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -209,7 +240,7 @@ export default function SignIn() {
             <ShinyButton
               type="submit"
               disabled={loading}
-              className="w-full justify-center"
+              className="w-full justify- cursor-pointer"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -238,17 +269,33 @@ export default function SignIn() {
           </div>
 
           {/* Google Sign In */}
-          {/* <button className="mt-4 w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 flex items-center justify-center">
-            <svg className="h-4 w-4 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M23.7 12.3c0-.8-.1-1.6-.2-2.4H12.2v4.5h6.5c-.3 1.6-1.2 2.9-2.5 3.8v3.2h4c2.4-2.2 3.5-5.4 3.5-9.1z" />
-              <path d="M12.2 24c3.3 0 6.1-1.1 8.1-3l-4-3.1c-1.1.7-2.5 1.2-4.1 1.2-3.2 0-5.8-2.1-6.8-5h-4.1v3.2c2 4 6 6.7 10.9 6.7z" />
-              <path d="M5.4 14.1c-.2-.7-.4-1.4-.4-2.1s.2-1.4.4-2.1V6.7h-4.1C.4 8.3 0 10.1 0 12s.4 3.7 1.3 5.3l4.1-3.2z" />
-              <path d="M12.2 4.9c1.8 0 3.4.6 4.6 1.8L20.3 3c-2.1-2-4.8-3-8.1-3C6 0 2 2.7 0 6.7l4.1 3.2c1-2.9 3.6-5 6.1-5z" />
-            </svg>
-            Continue with Google
-          </button> */}
+          <button
+            onClick={handleGoogleSignUp}
+            disabled={googleLoading}
+            className="mt-4 cursor-pointer w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {googleLoading ? (
+              <div className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Redirecting...
+              </div>
+            ) : (
+              <>
+                <svg className="h-4 w-4 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.7 12.3c0-.8-.1-1.6-.2-2.4H12.2v4.5h6.5c-.3 1.6-1.2 2.9-2.5 3.8v3.2h4c2.4-2.2 3.5-5.4 3.5-9.1z" />
+                  <path d="M12.2 24c3.3 0 6.1-1.1 8.1-3l-4-3.1c-1.1.7-2.5 1.2-4.1 1.2-3.2 0-5.8-2.1-6.8-5h-4.1v3.2c2 4 6 6.7 10.9 6.7z" />
+                  <path d="M5.4 14.1c-.2-.7-.4-1.4-.4-2.1s.2-1.4.4-2.1V6.7h-4.1C.4 8.3 0 10.1 0 12s.4 3.7 1.3 5.3l4.1-3.2z" />
+                  <path d="M12.2 4.9c1.8 0 3.4.6 4.6 1.8L20.3 3c-2.1-2-4.8-3-8.1-3C6 0 2 2.7 0 6.7l4.1 3.2c1-2.9 3.6-5 6.1-5z" />
+                </svg>
+                Continue with Google
+              </>
+            )}
+          </button>
 
-         
+
         </div>
 
         {/* Footer */}

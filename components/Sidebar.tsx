@@ -231,7 +231,7 @@ export default function Sidebar({
                     <div className="mb-3">
                       <Link href="/pricing" className="inline-flex items-center rounded-lg px-3 py-2 bg-white/5 ring-1 ring-inset ring-white/10 text-zinc-200 hover:bg-white/10">Manage subscription</Link>
                     </div>
-                    <ShinyButton onClick={handleSignOut} className="w-full justify-center">Sign Out</ShinyButton>
+                    <ShinyButton onClick={handleSignOut} className="w-full justify-center cursor-pointer">Sign Out</ShinyButton>
                   </div>
                 )}
               </>
