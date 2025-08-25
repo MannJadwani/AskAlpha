@@ -132,7 +132,7 @@ export default function SignUp() {
       }
       const data = await res.json();
       console.log('Account created successfully:', data);
-      createPlan(data.user.id);
+      // createPlan(data.user.id);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       router.replace('/recommendation');

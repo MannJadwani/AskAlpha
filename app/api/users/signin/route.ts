@@ -3,7 +3,6 @@ import supabase from '@/lib/supabase';
 import { signToken } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
-
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
@@ -12,6 +11,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
+    // 1. First try Supabase authentication
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    // If Supabase auth succeeds
+    if (authData.user && !authError) {
+      // Get user data from your app_user table
+      const { data: users, error: dbError } = await supabase
+        .from('app_user')
+        .select('*')
+        .eq('email', email)
+        .limit(1);
+
+      if (dbError || !users || users.length === 0) {
+        console.error('Error fetching user data:', dbError);
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const user = users[0];
+      const token = await signToken({ id: Number(user.id), email: user.email });
+
+      const response = NextResponse.json({
+        success: true,
+        message: 'Sign in successful',
+        user: {
+          ...user,
+          id: Number(user.id),
+        },
+        token
+      });
+
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60, // 1 hour
+      });
+
+      return response;
+    }
+
+    // 2. If Supabase auth fails, fall back to legacy authentication
     // Case-insensitive email lookup
     const { data: users, error } = await supabase
       .from('app_user')
@@ -67,9 +111,6 @@ export async function POST(request: NextRequest) {
       token
     });
 
-    // ✅ Proper cookie setup for both dev and prod
-    const isProd = process.env.NODE_ENV === 'production';
-
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: true,
@@ -77,8 +118,6 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 60 * 60, // 1 hour
     });
-    console.log('signed innnn and returning');
-    
 
     return response;
   } catch (error) {
