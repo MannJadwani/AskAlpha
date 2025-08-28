@@ -12,6 +12,7 @@ interface AuthContextType {
   creditsData: any; // You can replace 'any' with a specific type if available
   setCreditsData: React.Dispatch<React.SetStateAction<any>>;
   hasExpired: boolean;
+  hideGenerateReportSection:boolean;
   disabledCards: string[]; // Updated: array of strings
   setDisabledCards: React.Dispatch<React.SetStateAction<string[]>>; // Proper setter
 }
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [creditsData, setCreditsData] = useState(5);
   const [hasExpired, sethasExpired] = useState(false);
   const [disabledCards, setDisabledCards] = useState<string[]>([]);
+  const [hideGenerateReportSection, setHideGenerateReportSection] = useState(false);
   const fetchUser = async () => {
     console.log("Fetching user data...");
 
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (expired) {
           if (new Date(data?.plan?.monthenddate) < currentDate) {
             console.log("expired and month date is also expired");
+            setHideGenerateReportSection(true);
             const planres = await fetch(`/api/plan-details/${data?.plan?.id}`, {
               method: "POST",
               body: JSON.stringify({
@@ -120,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log("free plan added", UpdateddataRes);
           } else {
             console.log("expired but month date is not passed yet");
+            
           }
         } else {
           console.log("plan has not expires yet");
@@ -135,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         //no subscriptionId exists
         console.log("its a free plan");
+        setHideGenerateReportSection(true);
       }
 
       setCreditsData(Number(data?.plan?.frequency));
@@ -157,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasExpired,
         setDisabledCards,
         disabledCards,
+        hideGenerateReportSection
       }}
     >
       {children}

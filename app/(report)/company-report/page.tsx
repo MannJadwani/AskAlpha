@@ -10,7 +10,9 @@ import DOMPurify from 'dompurify';
 import { downloadReportAsText } from '../../../lib/exportReport';
 import supabase from '../../../lib/supabase';
 import FullScreenReport from '@/components/FullScreenReport';
-import ComingSoon from '@/components/ui/coming-soon';
+import { useAuth } from '@/context/AuthContext';
+import PlanWrapper from '@/components/ui/PlanWrapper';
+// import ComingSoon from '@/components/ui/coming-soon';
 
 interface ReportSection {
   SectionName: string;
@@ -89,6 +91,7 @@ function SearchParamsHandler({ setCompanyName, setNumSections }: {
 
 function CompanyReportContent() {
   const router = useRouter();
+  
   const { saveReport } = useReports();
   const [companyName, setCompanyName] = useState('');
   const [numSections, setNumSections] = useState(10);
@@ -1017,9 +1020,10 @@ function CompanyReportContent() {
 }
 
 export default function CompanyReport() {
+  const {hideGenerateReportSection} = useAuth();
   return (
    <>
-   <ComingSoon>
+   <PlanWrapper hideGenerateReportSection={hideGenerateReportSection}>
    <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 w-full">
         <div className="container mx-auto px-6 py-12">
@@ -1036,7 +1040,7 @@ export default function CompanyReport() {
     }>
       <CompanyReportContent />
     </Suspense>
-   </ComingSoon>
+   </PlanWrapper>
     
    </>
   );

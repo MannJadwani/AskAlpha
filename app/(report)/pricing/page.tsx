@@ -233,7 +233,6 @@ export default function PricingPage() {
 
 
   return (
-    <ComingSoon>
       <div className="min-h-screen bg-[#0a0c10] text-zinc-300">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
@@ -400,6 +399,5 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
-    </ComingSoon>
   );
 } 
