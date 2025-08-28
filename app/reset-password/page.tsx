@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChartBarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { ShinyButton } from '@/components/magicui/shiny-button';
@@ -9,7 +9,6 @@ import supabase from '@/lib/supabase';
 
 export default function ResetPassword() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
