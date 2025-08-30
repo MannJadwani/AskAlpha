@@ -84,7 +84,7 @@ export default function FullScreenReport({ report, onClose }: FullScreenReportPr
                   const getFaviconUrl = (url: string) => {
                     try {
                       const domain = new URL(url).origin;
-                      return `${domain}/favicon.ico`;
+                      return `${domain}/assets/logo/icon.png`;
                     } catch {
                       return null;
                     }
