@@ -274,7 +274,7 @@ export default function AskAlphaLanding() {
           
       </header>
 {/* Scroll stack (personas/use cases) */}
-      <section id="personas" className="mx-auto w-full px-6 py-14 ">
+      <section id="personas" className="mx-auto w-full px-4 sm:px-6 py-8 sm:py-14">
         <SectionTitle
           eyebrow="who it's for"
           title="Perfect for traders, teams, and operators"
@@ -301,7 +301,7 @@ export default function AskAlphaLanding() {
         </div>
       </section>
       {/* AI Stock Analysis Report Sample */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-14">
+      <section className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 sm:py-14">
         <SectionTitle eyebrow="sample" title="AI Stock Analysis Report Sample" />
         <div className="grid gap-6 md:grid-cols-12">
           {/* Left: Recommendation summary */}

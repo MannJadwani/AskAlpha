@@ -52,9 +52,9 @@ export const metadata: Metadata = {
     description: 'Get instant AI-powered stock analysis. Professional equity research for traders, investors, and advisors.',
     url: '/',
     siteName: 'AskAlpha',
-    images: [
-      { url: '/assets/og/askalpha-og.jpg', width: 1200, height: 630, alt: 'AskAlpha – AI Stock Analysis' },
-    ],
+          images: [
+        { url: '/assets/app.png', width: 1200, height: 630, alt: 'AskAlpha – AI Stock Analysis' },
+      ],
     locale: 'en_US',
     type: 'website',
   },
@@ -62,11 +62,11 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'AskAlpha – AI Stock Analysis',
     description: 'Free AI stock analysis with Buy/Sell/Hold in 60s. Global coverage and SEBI-compliant outputs.',
-    images: ['/assets/og/askalpha-og.jpg'],
+          images: ['/assets/app.png'],
     creator: '@askalpha',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: '/assets/logo/icon.png',
   },
   robots: {
     index: true,
