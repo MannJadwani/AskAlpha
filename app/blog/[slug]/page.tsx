@@ -3,13 +3,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, Clock, ArrowLeft, Tag, Share2, BookOpen, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import blogData from "@/data/blog-posts.json";
+import { usePathname } from "next/navigation";
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = blogData.posts.find((p) => p.slug === params.slug);
+export default function BlogPostPage() {
+  const pathname = usePathname();
+  const slug = pathname.split('/').pop();
+  const post = blogData.posts.find((p) => p.slug === slug);
   const [copied, setCopied] = useState(false);
 
   if (!post) {
