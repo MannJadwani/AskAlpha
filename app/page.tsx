@@ -200,6 +200,7 @@ export default function AskAlphaLanding() {
         items={[
           { title: 'Features', icon: <Sparkles className="h-5 w-5" />, href: '#features' },
           { title: 'Use cases', icon: <Users className="h-5 w-5" />, href: '#personas' },
+          { title: 'Blog', icon: <Newspaper className="h-5 w-5" />, href: '/blog' },
           { title: 'Recommendation', icon: <BarChart3 className="h-5 w-5" />, href: '/recommendation' },
           { title: 'Pricing', icon: <PieChart className="h-5 w-5" />, href: '/pricing' },
           { title: 'Templates', icon: <Layout className="h-5 w-5" />, href: '#templates' },

@@ -6,6 +6,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <p className="text-sm">© {new Date().getFullYear()} Ask Alpha</p>
         <nav className="flex items-center gap-6 text-sm">
+          <Link className="hover:text-white" href="/blog">Blog</Link>
           <Link className="hover:text-white" href="/terms">Terms</Link>
           <Link className="hover:text-white" href="/privacy">Privacy</Link>
           <Link className="hover:text-white" href="/disclaimer">Disclaimer</Link>
