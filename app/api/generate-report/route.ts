@@ -36,8 +36,9 @@ export async function POST(request: NextRequest) {
     });
 
     // First, collect information about the company using Perplexity
-    let companyInfo = "";
-    let sources = [];
+    let companyInfo: string = "";
+    let sources: string[] = [];
+    let chartsFromPerplexity: any = {};
     
     if (PERPLEXITY_API_KEY) {
       try {
@@ -70,9 +71,77 @@ export async function POST(request: NextRequest) {
           const perplexityData = await perplexityResponse.json();
           
           companyInfo = perplexityData.choices[0].message.content;
-          sources= perplexityData.citations
+          sources = (perplexityData.citations as string[] | undefined) || sources;
 
         }
+        // Ask Perplexity specifically for chart-friendly datasets
+        // 1) Revenue time series (last 5 fiscal years)
+        const revPrompt = `For ${companyName}, provide total revenue for the last 5 fiscal years as valid JSON: {"title":"Revenue (Last 5 Years)","unit":"USD Billion","series":[{"label":"FY2019","value":N},{"label":"FY2020","value":N},{"label":"FY2021","value":N},{"label":"FY2022","value":N},{"label":"FY2023","value":N}],"description":"Revenue trend based on reported or authoritative sources"}. Return ONLY JSON.`;
+        try {
+          const revRes = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'sonar-pro',
+              messages: [
+                { role: 'system', content: 'You return only strict JSON when asked. No prose.' },
+                { role: 'user', content: revPrompt }
+              ],
+              temperature: 0.1,
+              max_tokens: 2000
+            })
+          });
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            const content = revData?.choices?.[0]?.message?.content;
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed && Array.isArray(parsed.series)) {
+                chartsFromPerplexity.timeSeries = parsed;
+            }
+            } catch {}
+            if (revData?.citations?.length) {
+              sources = [...sources, ...revData.citations];
+            }
+          }
+        } catch {}
+
+        // 2) Revenue breakdown by segment or geography (latest)
+        const breakdownPrompt = `For ${companyName}, provide the latest revenue breakdown by business segment (or geography if segment unavailable) as JSON: {"title":"Revenue by Segment","labels":["Segment A","Segment B"],"values":[N,N],"description":"Latest mix; units USD Billion"}. Keep lengths aligned and return ONLY JSON.`;
+        try {
+          const brRes = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'sonar-pro',
+              messages: [
+                { role: 'system', content: 'You return only strict JSON when asked. No prose.' },
+                { role: 'user', content: breakdownPrompt }
+              ],
+              temperature: 0.1,
+              max_tokens: 2000
+            })
+          });
+          if (brRes.ok) {
+            const brData = await brRes.json();
+            const content = brData?.choices?.[0]?.message?.content;
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed && Array.isArray(parsed.labels) && Array.isArray(parsed.values)) {
+                chartsFromPerplexity.breakdown = parsed;
+              }
+            } catch {}
+            if (brData?.citations?.length) {
+              sources = [...sources, ...brData.citations];
+            }
+          }
+        } catch {}
       } catch (error) {
         console.error('Error with Perplexity API:', error);
         // Continue with OpenAI if Perplexity fails
@@ -87,7 +156,7 @@ You are a professional equity analyst. Based on the following information about 
 Company Information:
 ${companyInfo || `Please research ${companyName} thoroughly.`}
 
-Generate a JSON object with exactly ${numSections} sections for a comprehensive equity research report. Follow this exact format:
+Generate a JSON object with exactly ${numSections} sections for a comprehensive equity research report. In addition, include TWO visualization datasets that can be charted on the frontend:
 
 {
   "sections": [
@@ -99,17 +168,33 @@ Generate a JSON object with exactly ${numSections} sections for a comprehensive 
       "SectionName": "Section Name 2",
       "InformationNeeded": "point 1, point 2, point 3, point 4"
     }
-  ]
+  ],
+  "charts": {
+    "timeSeries": {
+      "title": "Revenue (Last 5 Years)",
+      "unit": "USD Billion",
+      "series": [
+        { "label": "2019", "value": 0 },
+        { "label": "2020", "value": 0 },
+        { "label": "2021", "value": 0 },
+        { "label": "2022", "value": 0 },
+        { "label": "2023", "value": 0 }
+      ],
+      "description": "Revenue trend based on reported or estimated values"
+    },
+    "breakdown": {
+      "title": "Revenue by Segment",
+      "labels": ["Segment A", "Segment B", "Segment C", "Segment D"],
+      "values": [0, 0, 0, 0],
+      "description": "Mix of segments or geographies"
+    }
+  }
 }
 
-Each section should focus on a different aspect of the company analysis. Section names should be professional, concise, and relevant to equity research. For each section, list 3-5 key points separated by commas that would need to be researched or included in that section.
-
-IMPORTANT:
-1. Return ONLY valid JSON without any explanation or additional text
-2. Create exactly ${numSections} sections as requested
-3. Make sure the sections cover all important aspects of a professional equity research report
-4. Each "InformationNeeded" should be a comma-separated list of points
-5. Be specific and detailed with the points
+Rules:
+1) Populate the chart values using the best available information from the context; if exact numbers are unavailable, provide reasonable approximations. Use consistent units.
+2) Keep values non-negative. Ensure arrays lengths match.
+3) Return ONLY valid JSON with the exact keys above. Do not include markdown fences or commentary.
 `;
 
     const completion = await openai.chat.completions.create({
@@ -133,10 +218,21 @@ IMPORTANT:
     try {
       // Parse the JSON response to validate it
       const reportData = JSON.parse(jsonContent || '{}');
-      
+
+      // Merge charts from Perplexity if available
+      if (chartsFromPerplexity && (chartsFromPerplexity.timeSeries || chartsFromPerplexity.breakdown)) {
+        reportData.charts = reportData.charts || {};
+        if (chartsFromPerplexity.timeSeries) {
+          reportData.charts.timeSeries = chartsFromPerplexity.timeSeries;
+        }
+        if (chartsFromPerplexity.breakdown) {
+          reportData.charts.breakdown = chartsFromPerplexity.breakdown;
+        }
+      }
+
       return NextResponse.json({
-        reportData: reportData,
-        sources: sources
+        reportData,
+        sources
       });
     } catch (parseError) {
       console.error('Error parsing JSON response:', parseError);

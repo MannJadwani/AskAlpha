@@ -25,6 +25,11 @@ interface ReportSection {
 interface ReportData {
   sections: ReportSection[];
   sources?: string[]; // Add sources for the overall report
+
+  charts?: {
+    timeSeries?: { title: string; unit?: string; series: { label: string; value: number }[]; description?: string };
+    breakdown?: { title: string; labels: string[]; values: number[]; description?: string };
+  };
 }
 
 function SignInPrompt() {
@@ -43,7 +48,7 @@ function SignInPrompt() {
             <div className="mt-4">
               <Link 
                 href="/sign-in" 
-                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Sign in
               </Link>
@@ -95,6 +100,7 @@ function CompanyReportContent() {
   const [report, setReport] = useState<string | null>(null);
   const [parsedReport, setParsedReport] = useState<string>('');
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [chartData, setChartData] = useState<ReportData['charts'] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -114,6 +120,15 @@ function CompanyReportContent() {
       setParsedReport(DOMPurify.sanitize(html));
     }
   }, [report]);
+
+  // debug chart changes
+  useEffect(() => {
+    if (chartData) {
+      console.log('chartData state updated:', chartData);
+    } else {
+      console.log('chartData is null');
+    }
+  }, [chartData]);
 
   // Parse section content when it changes
   useEffect(() => {
@@ -197,13 +212,35 @@ function CompanyReportContent() {
       }
 
       const data = await response.json();
+      console.log('generate-report response:', data);
       if (data.reportData) {
+        console.log('reportData.charts from API:', data.reportData?.charts);
         setReportData({
           sections: data.reportData.sections,
-          sources: data.sources || []
+          sources: data.sources || [],
+          charts: data.reportData.charts || undefined
         });
+        setChartData(data.reportData.charts || null);
       } else {
-        setReport(data.report);
+        // Some providers may still return JSON as a raw string under `report`.
+        // Try to parse it and extract sections/charts; fallback to raw text.
+        let parsed: any = null;
+        try {
+          if (typeof data.report === 'string') {
+            parsed = JSON.parse(data.report);
+          }
+        } catch {}
+        if (parsed && parsed.sections) {
+          console.log('parsed report charts:', parsed?.charts);
+          setReportData({
+            sections: parsed.sections,
+            sources: data.sources || [],
+            charts: parsed.charts || undefined
+          });
+          setChartData(parsed.charts || null);
+        } else {
+          setReport(data.report);
+        }
       }
     } catch (err) {
       setError('Error generating report. Please try again.');
@@ -735,6 +772,65 @@ function CompanyReportContent() {
 
           {reportData && !loading && (
             <div className="bg-white/5 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden w-full border border-white/10">
+              {chartData && (chartData.timeSeries || chartData.breakdown) && (
+                <div className="px-6 py-6 border-b border-white/10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {chartData.timeSeries && (
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <h4 className="text-sm font-semibold text-white mb-2">{chartData.timeSeries.title}</h4>
+                        <div className="text-xs text-zinc-400 mb-3">{chartData.timeSeries.description}</div>
+                        <svg viewBox="0 0 100 40" className="w-full h-40">
+                          <polyline fill="none" stroke="#22d3ee" strokeWidth="1.5"
+                            points={(() => {
+                              const s = chartData.timeSeries!.series;
+                              const max = Math.max(1, ...s.map(p => p.value));
+                              return s.map((p, i) => {
+                                const x = (i / Math.max(1, s.length - 1)) * 100;
+                                const y = 38 - (p.value / max) * 35;
+                                return `${x},${y}`;
+                              }).join(' ');
+                            })()} />
+                        </svg>
+                        <div className="mt-2 flex justify-between text-[10px] text-zinc-400">
+                          {chartData.timeSeries.series.map(pt => (
+                            <span key={pt.label}>{pt.label}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {chartData.breakdown && (
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col items-center">
+                        <h4 className="text-sm font-semibold text-white mb-2">{chartData.breakdown.title}</h4>
+                        <div className="text-xs text-zinc-400 mb-3">{chartData.breakdown.description}</div>
+                        <svg viewBox="0 0 42 42" className="w-40 h-40 rotate-[-90deg]">
+                          {(() => {
+                            const total = chartData.breakdown!.values.reduce((a,b)=>a+b,0) || 1;
+                            let acc = 0;
+                            const colors = ['#22d3ee','#a78bfa','#ff7ad9','#eab308','#10b981'];
+                            return chartData.breakdown!.values.map((v, idx) => {
+                              const r = 16; const c = 21; const circ = 2 * Math.PI * r; const frac = v / total;
+                              const dash = circ * frac; const gap = circ - dash;
+                              const el = (
+                                <circle key={idx} cx={c} cy={c} r={r} fill="transparent" stroke={colors[idx % colors.length]} strokeWidth="8" strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-circ * acc} />
+                              );
+                              acc += frac; return el;
+                            });
+                          })()}
+                          <circle cx="21" cy="21" r="10" className="fill-[var(--background)]" />
+                        </svg>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-zinc-300 w-full">
+                          {chartData.breakdown.labels.map((lbl, i) => (
+                            <div key={lbl} className="flex items-center gap-2">
+                              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: ['#22d3ee','#a78bfa','#ff7ad9','#eab308','#10b981'][i % 5] }} />
+                              <span className="truncate">{lbl}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {showSignInPrompt && <SignInPrompt />}
               
               <div className="border-b border-white/10 bg-white/5 px-6 py-6 flex items-center justify-between">

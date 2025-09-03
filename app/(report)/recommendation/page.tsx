@@ -45,6 +45,9 @@ export default function RecommendationPage() {
   const [recommendationData, setRecommendationData] = useState<RecommendationData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renderedMarkdown, setRenderedMarkdown] = useState<string>('');
+  const [mode, setMode] = useState<'stock' | 'ipo'>('stock');
+  const [ipoInput, setIpoInput] = useState('');
+  const [ipoMarkdown, setIpoMarkdown] = useState<string | null>(null);
 
   // Prefill from query string and auto-trigger
   useEffect(() => {
@@ -204,6 +207,38 @@ export default function RecommendationPage() {
     }
   };
 
+  const handleAnalyzeIPO = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ipoInput.trim()) return;
+    setIsAnalyzing(true);
+    setError(null);
+    setIpoMarkdown(null);
+    setCurrentStep('researching');
+    try {
+      setTimeout(() => {
+        if (isAnalyzing) setCurrentStep('structuring');
+      }, 2000);
+      const res = await fetch('/api/generate-ipo-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipoName: ipoInput.trim() })
+      });
+      if (!res.ok) {
+        const ed = await res.json();
+        throw new Error(ed.error || 'Failed to analyze IPO');
+      }
+      const data = await res.json();
+      const md = data?.analysis?.markdown || '';
+      setIpoMarkdown(md);
+      setCurrentStep('complete');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error analyzing IPO');
+      setCurrentStep('input');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const getRecommendationColor = (action: string) => {
     switch (action) {
       case 'BUY': return 'text-green-600 bg-green-50 border-green-200';
@@ -247,30 +282,36 @@ export default function RecommendationPage() {
   };
 
   return (
-    <div className="items-center justify-center w-full flex flex-col bg-[#0a0c10] text-zinc-300">
+    <div className="items-center justify-center w-full flex flex-col">
       <div className="mx-auto max-w-5xl px-6 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             AI Investment Recommendations
           </h1>
-          <p className="text-xl text-zinc-400 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Get comprehensive investment analysis powered by Perplexity's real-time research and GPT's structured insights
           </p>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="mb-6 flex items-center justify-center gap-3">
+          <button onClick={() => setMode('stock')} className={`px-3 py-1.5 rounded-lg text-sm ring-1 ${mode==='stock' ? 'bg-white/5 text-zinc-200 ring-white/10 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10' : 'bg-transparent text-zinc-600 ring-border hover:bg-white/5 dark:text-zinc-400 dark:ring-white/10'}`}>Stock</button>
+          <button onClick={() => setMode('ipo')} className={`px-3 py-1.5 rounded-lg text-sm ring-1 ${mode==='ipo' ? 'bg-black text-white ring-black/20 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10' : 'bg-transparent text-zinc-600 ring-border hover:bg-white/5 dark:text-zinc-400 dark:ring-white/10'}`}>IPO</button>
         </div>
 
         {/* Main Content */}
         <div className="max-w-4xl mx-auto">
           {/* Input Form */}
-          {currentStep === 'input' && (
+          {currentStep === 'input' && mode==='stock' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 shadow-2xl"
+            className="rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl"
             >
               <form id="recommendation-form" onSubmit={handleAnalyze} className="space-y-6">
                 <div>
-                  <label htmlFor="company" className="block text-sm font-semibold text-zinc-200 mb-3">
+                  <label htmlFor="company" className="block text-sm font-semibold text-foreground mb-3">
                     Company Name or Ticker Symbol
                   </label>
                   <input
@@ -279,7 +320,7 @@ export default function RecommendationPage() {
                     value={companyInput}
                     onChange={(e) => setCompanyInput(e.target.value)}
                     placeholder="e.g., Apple, AAPL, Tesla, TSLA"
-                    className="w-full px-4 py-3 border border-white/10 rounded-xl focus:ring-2 focus:ring-white/20 focus:border-transparent bg-black/30 text-white placeholder:text-zinc-500 text-lg"
+                    className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg"
                     disabled={isAnalyzing}
                   />
                 </div>
@@ -299,7 +340,7 @@ export default function RecommendationPage() {
                 <ShinyButton
                   type="submit"
                   disabled={isAnalyzing || !companyInput.trim() || currentUser?.frequency === '0'}
-                  className="w-full justify-center py-4 text-base"
+                  className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
                 >
                   Generate Investment Recommendation
                 </ShinyButton>
@@ -326,12 +367,25 @@ export default function RecommendationPage() {
             </motion.div>
           )}
 
+          {currentStep === 'input' && mode==='ipo' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl">
+              <form onSubmit={handleAnalyzeIPO} className="space-y-6">
+                <div>
+                  <label htmlFor="ipo" className="block text-sm font-semibold text-foreground mb-3">IPO name</label>
+                  <input id="ipo" type="text" value={ipoInput} onChange={(e)=>setIpoInput(e.target.value)} placeholder="e.g., Tata Technologies IPO"
+                    className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg" />
+                </div>
+                <ShinyButton type="submit" className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10">Analyze IPO</ShinyButton>
+              </form>
+            </motion.div>
+          )}
+
           {/* Loading States */}
           {(currentStep === 'researching' || currentStep === 'structuring') && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 shadow-2xl"
+            className="rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl"
             >
               <div className="text-center">
                 <div className="mb-6">
@@ -342,17 +396,17 @@ export default function RecommendationPage() {
                   </div>
                 </div>
 
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
                   {currentStep === 'researching' ? 'Researching Company...' : 'Generating Recommendation...'}
                 </h3>
-                <p className="text-zinc-400 mb-6">
+                <p className="text-muted-foreground mb-6">
                   {currentStep === 'researching'
                     ? 'Analyzing real-time market data, financial reports, and recent news using Perplexity AI...'
                     : 'Structuring insights and generating investment recommendation using GPT-4...'
                   }
                 </p>
 
-                <div className="rounded-lg p-4 border border-white/10 bg-white/5">
+                <div className="rounded-lg p-4 border border-border bg-card">
                   <div className="flex items-center justify-center space-x-4">
                     <div className={`w-3 h-3 rounded-full ${getProgressState('research')}`}></div>
                     <span className="text-sm font-medium">Research Phase</span>
@@ -367,14 +421,14 @@ export default function RecommendationPage() {
           )}
 
           {/* Results */}
-          {currentStep === 'complete' && recommendationData && (
+          {currentStep === 'complete' && mode==='stock' && recommendationData && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8"
             >
               {/* Recommendation Card */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
                 <div className={`p-8 border-l-8 ${getRecommendationColor(recommendationData.recommendation.action).replace('text-', 'border-').replace('bg-', '').replace('border-', 'border-l-')}`}>
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
@@ -382,30 +436,30 @@ export default function RecommendationPage() {
                         {getRecommendationIcon(recommendationData.recommendation.action)}
                       </div>
                       <div>
-                        <h2 className="text-3xl font-bold text-white">
+                        <h2 className="text-3xl font-bold text-foreground">
                           {recommendationData.recommendation.action}
                         </h2>
-                        <p className="text-gray-600 dark:text-gray-300">
+                        <p className="text-muted-foreground">
                           Confidence: {recommendationData.recommendation.confidence}%
                         </p>
                       </div>
                     </div>
                     {recommendationData.recommendation.targetPrice ? (
                       <div className="text-right">
-                        <p className="text-sm text-zinc-400">Target Price</p>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-sm text-muted-foreground">Target Price</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {formatINR(recommendationData.recommendation.targetPrice)}
                         </p>
                         {recommendationData.recommendation.currentPrice && (
-                           <p className="text-sm text-zinc-500">
+                           <p className="text-sm text-muted-foreground">
                             Current: {formatINR(recommendationData.recommendation.currentPrice)}
                           </p>
                         )}
                       </div>
                     ) : (
                       <div className="text-right">
-                        <p className="text-sm text-zinc-400">Price Target</p>
-                        <p className="text-lg font-medium text-zinc-500">
+                        <p className="text-sm text-muted-foreground">Price Target</p>
+                        <p className="text-lg font-medium text-muted-foreground">
                           Not Available
                         </p>
                       </div>
@@ -414,14 +468,14 @@ export default function RecommendationPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">Key Reasoning</h3>
-                      <p className="text-zinc-300 leading-relaxed">
+                      <h3 className="text-lg font-semibold text-foreground mb-3">Key Reasoning</h3>
+                      <p className="text-foreground/90 leading-relaxed">
                         {recommendationData.recommendation.reasoning}
                       </p>
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">Time Horizon</h3>
-                      <p className="text-zinc-300">
+                      <h3 className="text-lg font-semibold text-foreground mb-3">Time Horizon</h3>
+                      <p className="text-foreground/90">
                         {recommendationData.recommendation.timeHorizon}
                       </p>
                     </div>
@@ -429,14 +483,14 @@ export default function RecommendationPage() {
                 </div>
 
                 {/* Key Factors */}
-                <div className="px-8 py-6 border-t border-white/10 bg-white/[0.03]">
-                  <h3 className="text-lg font-semibold text-white mb-4">Key Factors</h3>
+                <div className="px-8 py-6 border-t border-border bg-muted">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Key Factors</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h4 className="text-sm font-medium text-emerald-300 mb-2">Supporting Factors</h4>
                       <ul className="space-y-1">
                         {recommendationData.recommendation.keyFactors.map((factor, index) => (
-                            <li key={index} className="text-sm text-zinc-300 flex items-start">
+                            <li key={index} className="text-sm text-foreground/90 flex items-start">
                             <span className="text-green-500 mr-2">•</span>
                             {factor}
                           </li>
@@ -447,7 +501,7 @@ export default function RecommendationPage() {
                       <h4 className="text-sm font-medium text-rose-300 mb-2">Risk Factors</h4>
                       <ul className="space-y-1">
                         {recommendationData.recommendation.risks.map((risk, index) => (
-                            <li key={index} className="text-sm text-zinc-300 flex items-start">
+                            <li key={index} className="text-sm text-foreground/90 flex items-start">
                             <span className="text-red-500 mr-2">•</span>
                             {risk}
                           </li>
@@ -459,12 +513,12 @@ export default function RecommendationPage() {
               </div>
 
               {/* Detailed Analysis */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl">
-                <h3 className="text-xl font-semibold text-white mb-6">Detailed Analysis Report</h3>
+              <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
+                <h3 className="text-xl font-semibold text-foreground mb-6">Detailed Analysis Report</h3>
 
                 <div className="prose prose-lg dark:prose-invert max-w-none">
                   <div
-                    className="text-zinc-300 leading-relaxed"
+                    className="text-foreground/90 leading-relaxed"
                     dangerouslySetInnerHTML={{
                       __html: renderedMarkdown
                     }}
@@ -473,8 +527,8 @@ export default function RecommendationPage() {
 
                 {/* Citations */}
                 {recommendationData.perplexityAnalysis.citations.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-white/10">
-                    <h4 className="text-lg font-semibold text-white mb-4">Sources</h4>
+                  <div className="mt-8 pt-6 border-t border-border">
+                    <h4 className="text-lg font-semibold text-foreground mb-4">Sources</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {recommendationData.perplexityAnalysis.citations.map((citation, index) => (
                         <a
@@ -491,7 +545,7 @@ export default function RecommendationPage() {
                   </div>
                 )}
 
-                <div className="mt-6 text-xs text-zinc-500">
+                <div className="mt-6 text-xs text-muted-foreground">
                   Analysis generated on {new Date(recommendationData.analysisTimestamp).toLocaleString()}
                 </div>
               </div>
@@ -505,10 +559,21 @@ export default function RecommendationPage() {
                     setRenderedMarkdown('');
                     setCompanyInput('');
                   }}
-                  className="px-6 py-3 !bg-white/5 !text-zinc-200 !ring-white/10"
+                  className="px-6 py-3 !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
                 >
                   Analyze Another Company
                 </ShinyButton>
+              </div>
+            </motion.div>
+          )}
+
+          {currentStep === 'complete' && mode==='ipo' && ipoMarkdown && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
+              <div className="prose prose-lg dark:prose-invert max-w-none">
+                <div
+                  className="text-foreground/90 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize((() => { try { return marked.parse(ipoMarkdown) as string; } catch { return ipoMarkdown; } })()) }}
+                />
               </div>
             </motion.div>
           )}
