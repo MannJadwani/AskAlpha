@@ -17,7 +17,7 @@ import ScrollReveal from "./components/ui/jsrepo/ScrollReveal/ScrollReveal";
 
 
 const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs tracking-wide text-zinc-300 backdrop-blur">
+  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs tracking-wide text-zinc-300 backdrop-blur transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105">
     {children}
   </span>
 );
@@ -29,18 +29,18 @@ const Glow = ({ className = "" }) => (
 );
 
 const SectionTitle = ({ eyebrow, title, cta }: { eyebrow?: string; title: string; cta?: React.ReactNode }) => (
-  <div className="mb-8 flex items-end justify-between">
+  <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
     <div>
       {eyebrow && <div className="mb-2 text-xs uppercase tracking-[0.22em] text-zinc-400">{eyebrow}</div>}
-      <h2 className="text-3xl md:text-4xl font-semibold text-zinc-100 leading-tight">{title}</h2>
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-zinc-100 leading-tight">{title}</h2>
     </div>
-    {cta}
+    {cta && <div className="w-full sm:w-auto">{cta}</div>}
   </div>
 );
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`relative rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${className}`}>
-    <div className="pointer-events-none absolute inset-0 rounded-3xl [mask-image:radial-gradient(circle_at_60%_-10%,rgba(255,255,255,0.25),transparent_60%)]" />
+  <div className={`relative rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5 backdrop-blur shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] hover:scale-[1.02] hover:-translate-y-1 ${className}`}>
+    <div className="pointer-events-none absolute inset-0 rounded-2xl sm:rounded-3xl [mask-image:radial-gradient(circle_at_60%_-10%,rgba(255,255,255,0.25),transparent_60%)]" />
     {children}
   </div>
 );
@@ -58,8 +58,15 @@ type GridItemProps = {
 
 const GridItem = ({ area, icon, title, description }: GridItemProps) => {
   return (
-    <li className={`min-h-[14rem] list-none ${area}`}>
-      <div className="relative h-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
+    <motion.li 
+      className={`min-h-[12rem] sm:min-h-[14rem] list-none ${area}`}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.05, y: -5 }}
+      transition={{ duration: 0.6 }}
+      viewport={{ once: true }}
+    >
+      <div className="relative h-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 transition-all duration-300 hover:border-white/20 hover:shadow-lg">
         <GlowingEffect
           blur={0}
           borderWidth={3}
@@ -70,33 +77,70 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
           inactiveZone={0.01}
           variant="blue"
         />
-        <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+        <div className="border-0.75 relative flex h-full flex-col justify-between gap-4 sm:gap-6 overflow-hidden rounded-xl p-4 sm:p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D] transition-all duration-300 hover:shadow-[0px_0px_40px_0px_#2D2D2D]">
           <div className="relative flex flex-1 flex-col justify-between gap-3">
-            <div className="w-fit rounded-lg border border-gray-600 p-2">
+            <div className="w-fit rounded-lg border border-gray-600 p-2 transition-all duration-300 hover:border-gray-500 hover:bg-white/5">
               {icon}
             </div>
-            <div className="space-y-3">
-              <h3 className="-tracking-4 pt-0.5 font-sans text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white">
+            <div className="space-y-2 sm:space-y-3">
+              <h3 className="-tracking-4 pt-0.5 font-sans text-lg/[1.25rem] sm:text-xl/[1.375rem] font-semibold text-balance text-black md:text-2xl/[1.875rem] dark:text-white transition-colors duration-300 hover:text-white">
                 {title}
               </h3>
-              <h2 className="font-sans text-sm/[1.125rem] text-black md:text-base/[1.375rem] dark:text-neutral-400 [&_b]:md:font-semibold [&_strong]:md:font-semibold">
+              <h2 className="font-sans text-sm/[1.125rem] sm:text-sm/[1.125rem] text-black md:text-base/[1.375rem] dark:text-neutral-400 [&_b]:md:font-semibold [&_strong]:md:font-semibold transition-colors duration-300 hover:text-neutral-300">
                 {description}
               </h2>
             </div>
           </div>
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 };
 
 export default function AskAlphaLanding() {
   const [heroInput, setHeroInput] = useState("");
+  
   const handleAnalyzeClick = () => {
     const q = heroInput.trim();
     if (!q) return;
     const params = new URLSearchParams({ symbol: q });
     window.location.href = `/recommendation?${params.toString()}`;
+  };
+
+  const handleDownloadReport = () => {
+    // Navigate to pricing page for report download
+    window.location.href = '/pricing';
+  };
+
+  const handleTryFreeAnalysis = () => {
+    // Scroll to hero section or navigate to recommendation page
+    const heroSection = document.getElementById('hero');
+    if (heroSection) {
+      heroSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.location.href = '/recommendation';
+    }
+  };
+
+  const handleGetReport = () => {
+    // Navigate to pricing page
+    window.location.href = '/pricing';
+  };
+
+  const handleExplorePersonas = () => {
+    // Scroll to personas section
+    const personasSection = document.getElementById('personas');
+    if (personasSection) {
+      personasSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleBrowseTemplates = () => {
+    // Scroll to templates section
+    const templatesSection = document.getElementById('templates');
+    if (templatesSection) {
+      templatesSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const flowingMenuItems = [
@@ -108,7 +152,12 @@ export default function AskAlphaLanding() {
   // Inline SVG mocks to showcase UI inside device frames (mobile + desktop)
   const mobileSvg = `<?xml version='1.0' encoding='UTF-8'?>
   <svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'>
-    <rect width='390' height='844' fill='#0b0d12'/>
+    <defs>
+      <clipPath id='mobileRoundedCorners'>
+        <rect x='0' y='0' width='390' height='844' rx='55' ry='55'/>
+      </clipPath>
+    </defs>
+    <rect width='390' height='844' fill='#0b0d12' clip-path='url(#mobileRoundedCorners)'/>
     <text x='24' y='60' fill='#e5e7eb' font-size='16' font-family='Inter, Arial'>Watchlist</text>
     <g>
       <rect x='20' y='84' rx='12' ry='12' width='350' height='44' fill='rgba(255,255,255,0.05)' stroke='rgba(255,255,255,0.1)'/>
@@ -211,80 +260,125 @@ export default function AskAlphaLanding() {
       />
 
       {/* Hero */}
-      <header className="relative mx-auto mt-6 w-full px-6 pb-18 h-[100vh]">
-      <div className="relative h-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
-        <GlowingEffect
-          blur={0}
-          borderWidth={3}
-          spread={80}
-          glow={true}
-          disabled={false}
-          proximity={64}
-          inactiveZone={0.01}
-        />
-        <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
-        <div className="absolute -left-24 top-10 h-72 w-[55rem] rotate-[8deg] rounded-full bg-[radial-gradient(closest-side,rgba(30,144,255,0.5),transparent)] blur-2xl" />
-          <div className="grid gap-8 md:grid-cols-2 h-full">
-            <div className="z-10 h-full flex justify-center flex-col">
-              <div className="mb-4 flex items-center gap-2">
-                <Badge>AI research engine</Badge>
-                <Badge>Equities · Indices · ETFs</Badge>
-              </div>
-              <h1 className="headline mb-4 text-4xl leading-[1.05] text-zinc-50 md:text-6xl">
-                Free AI Stock Analysis Tool –
-                <br />
-                Buy/Sell/Hold Recommendations
-              </h1>
-              <p className="mb-6 max-w-2xl text-base text-zinc-300 md:text-lg">
-                Get instant AI-powered stock analysis and investment recommendations in under 60 seconds. Professional equity research tool for traders, investors, and financial advisors. No spreadsheets, no guesswork—just actionable insights.
-              </p>
-              <div className="relative mt-4 max-w-xl">
-                <input
-                  type="text"
-                  placeholder="Enter stock symbol or company name (e.g., RELIANCE, AAPL, TCS)"
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 pr-36 text-sm text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-white/20 focus:border-transparent"
-                  value={heroInput}
-                  onChange={(e) => setHeroInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAnalyzeClick(); } }}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <ShinyButton className="px-5 py-2" onClick={handleAnalyzeClick}>Analyze</ShinyButton>
+      <motion.header 
+        id="hero"
+        className="relative mx-auto mt-4 sm:mt-6 w-full px-4 sm:px-6 pb-12 sm:pb-18 min-h-[100vh] flex items-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+      >
+        {/* Logo */}
+        <motion.div 
+          className="absolute top-6 left-12 z-50"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+        >
+          <img 
+            src="/assets/logo/logo.png" 
+            alt="Ask Alpha" 
+            className="h-10 w-auto transition-all duration-300 hover:scale-105"
+          />
+        </motion.div>
+        <div className="relative w-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
+          <GlowingEffect
+            blur={0}
+            borderWidth={3}
+            spread={80}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="border-0.75 relative flex flex-col justify-between gap-6 overflow-hidden rounded-xl p-4 sm:p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+            <div className="absolute -left-24 top-10 h-72 w-[55rem] rotate-[8deg] rounded-full bg-[radial-gradient(closest-side,rgba(30,144,255,0.5),transparent)] blur-2xl" />
+            <div className=" md:grid gap-6 sm:gap-8 md:grid-cols-2 min-h-[80vh]">
+              <motion.div 
+                className="z-10 flex justify-center flex-col w-full"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Badge>AI research engine</Badge>
+                  <Badge>Equities · Indices · ETFs</Badge>
                 </div>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-400">
-                <Badge>60-second stock analysis</Badge>
-                <Badge>SEBI compliant research</Badge>
-                <Badge>Global stock coverage</Badge>
-              </div>
-            </div>
-            {/* Right visual: laptop + mobile mockups */}
-            <div className="relative flex justify-center items-center -mt-20">
-              {/* Laptop mockup (Safari frame with embedded UI) */}
-              <Safari url="askalpha.ai/app" imageSrc={desktopMock} width={1280} height={800} className="hidden md:block" />
-              
-              {/* Mobile mockup (iPhone 15 Pro) with embedded UI */}
-              <div className="absolute right-[-10px] bottom-[40px] hidden md:block">
-                <div className="scale-[0.42] origin-bottom-right">
-                  <Iphone15Pro src={mobileMock} />
+                <h1 className="headline mb-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-zinc-50">
+                  AI Stock Analysis
+                  <br />
+                </h1>
+                <p className="mb-6 max-w-2xl text-sm sm:text-base md:text-lg text-zinc-300">
+                  Get instant AI-powered stock analysis and investment recommendations in under 60 seconds. Professional equity research tool for traders, investors, and financial advisors. No spreadsheets, no guesswork—just actionable insights.
+                </p>
+                <div className="relative mt-4 max-w-xl">
+                  <input
+                    type="text"
+                    placeholder="Enter stock symbol or company name (e.g., RELIANCE, AAPL, TCS)"
+                    className="min-w-full rounded-2xl border border-white/10 bg-white/5 px-4 sm:px-5 py-3 sm:py-4 pr-28 sm:pr-36 text-sm text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-lg"
+                    value={heroInput}
+                    onChange={(e) => setHeroInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAnalyzeClick(); } }}
+                  />
+                  <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2">
+                    <ShinyButton className="px-3 sm:px-5 py-2 text-xs sm:text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg" onClick={handleAnalyzeClick}>Analyze</ShinyButton>
+                  </div>
                 </div>
-              </div>
+                <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-400">
+                  <Badge>60-second stock analysis</Badge>
+                  <Badge>SEBI compliant research</Badge>
+                  <Badge>Global stock coverage</Badge>
+                </div>
+              </motion.div>
+              {/* Right visual: laptop + mobile mockups */}
+              <motion.div 
+                className="relative flex justify-center items-center mt-8 md:mt-0"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+              >
+                {/* Laptop mockup (Safari frame with embedded UI) */}
+                <div className="hidden md:block group">
+                  <div className="scale-75 lg:scale-90 xl:scale-50 transition-all duration-500 hover:scale-[0.8] lg:hover:scale-[0.95] xl:hover:scale-[0.55] hover:rotate-1">
+                    <Safari url="askalpha.ai/app" imageSrc={desktopMock} width={1280} height={800} />
+                  </div>
+                </div>
+                
+                {/* Mobile mockup (iPhone 15 Pro) with embedded UI */}
+                <div className="absolute right-[-20px] bottom-[20px] hidden lg:block group">
+                  <div className="scale-[0.35] lg:scale-[0.4] xl:scale-[0.42] origin-bottom-right transition-all duration-500 hover:scale-[0.38] lg:hover:scale-[0.43] xl:hover:scale-[0.45] hover:rotate-2 hover:-translate-y-2">
+                    <Iphone15Pro src={mobileMock} />
+                  </div>
+                </div>
+                
+                {/* Mobile-only mockup */}
+                <div className="block md:hidden group">
+                  <div className="scale-75 transition-all duration-500 hover:scale-80 hover:rotate-1">
+                    <Iphone15Pro src={mobileMock} />
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
         </div>
-          </div>
-          
-      </header>
+      </motion.header>
 {/* Scroll stack (personas/use cases) */}
-      <section id="personas" className="mx-auto w-full px-4 sm:px-6 py-8 sm:py-14">
+      <motion.section 
+        id="personas" 
+        className="mx-auto w-full px-4 sm:px-6 py-8 sm:py-14"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         <SectionTitle
           eyebrow="who it's for"
           title="Perfect for traders, teams, and operators"
-          cta={<ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10">Explore personas</ShinyButton>}
+          cta={<ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10" onClick={handleExplorePersonas}>Explore personas</ShinyButton>}
         />
         <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-[#0a0c10] to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l no-scrollbar from-[#0a0c10] to-transparent" />
-          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-6 sm:w-10 bg-gradient-to-r from-[#0a0c10] to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-6 sm:w-10 bg-gradient-to-l no-scrollbar from-[#0a0c10] to-transparent z-10" />
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {[
               { icon: Users, title: 'Retail traders', copy: 'Quick conviction before taking a position' },
               { icon: Briefcase, title: 'Wealth managers / RIAs', copy: 'Scalable research without more headcount' },
@@ -292,115 +386,154 @@ export default function AskAlphaLanding() {
               { icon: Building2, title: 'Founders & CFOs', copy: 'Impartial valuation sanity‑check for fundraise/M&A' },
               { icon: BarChart3, title: 'Swing investors', copy: 'Signals and screens with explainability' },
               { icon: Shield, title: 'Compliance‑minded teams', copy: 'Audit‑ready outputs with sources' },
-            ].map(({ icon: Icon, title, copy }) => (
-              <Card key={title} className="min-w-[260px] snap-start">
-                <div className="mb-2 flex items-center gap-2 text-zinc-300"><Icon className="h-4 w-4" />{title}</div>
-                <p className="text-sm text-zinc-400">{copy}</p>
-              </Card>
+            ].map(({ icon: Icon, title, copy }, index) => (
+              <motion.div
+                key={title}
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                className="cursor-pointer"
+              >
+                <Card className="min-w-[240px] sm:min-w-[260px] snap-start">
+                  <div className="mb-2 flex items-center gap-2 text-zinc-300 transition-colors duration-300 hover:text-white">
+                    <Icon className="h-4 w-4 transition-transform duration-300 hover:scale-110" />
+                    {title}
+                  </div>
+                  <p className="text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">{copy}</p>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
       {/* AI Stock Analysis Report Sample */}
-      <section className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 sm:py-14">
+      <motion.section 
+        className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 sm:py-14"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         <SectionTitle eyebrow="sample" title="AI Stock Analysis Report Sample" />
-        <div className="grid gap-6 md:grid-cols-12">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-12">
           {/* Left: Recommendation summary */}
-          <div className="md:col-span-5">
+          <motion.div 
+            className="md:col-span-5"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
             <Card className="h-full">
               <div className="mb-4 flex items-center justify-between">
                 <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300">BUY</span>
                 <span className="text-xs text-zinc-400">Generated by AskAlpha AI</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
                 <div>
                   <div className="text-zinc-400">Current Price</div>
-                  <div className="text-xl text-white">₹3,050.00</div>
+                  <div className="text-lg sm:text-xl text-white">₹3,050.00</div>
                   <div className="text-emerald-400">+2.5% today</div>
                 </div>
-            <div>
-                  <div className="text-zinc-400">Target Price</div>
-                  <div className="text-xl text-white">₹3,400.00</div>
-                  <div className="text-zinc-400">12-month target</div>
-                    </div>
                 <div>
+                  <div className="text-zinc-400">Target Price</div>
+                  <div className="text-lg sm:text-xl text-white">₹3,400.00</div>
+                  <div className="text-zinc-400">12-month target</div>
+                </div>
+                <div className="col-span-2">
                   <div className="text-zinc-400">Confidence</div>
-                  <div className="text-xl text-white">87%</div>
+                  <div className="text-lg sm:text-xl text-white">87%</div>
                   <div className="text-zinc-400">High conviction</div>
-                  </div>
+                </div>
               </div>
               <div className="mt-6">
-                <ShinyButton className="w-full justify-center">Download Report</ShinyButton>
-            </div>
+                <ShinyButton className="w-full justify-center" onClick={handleDownloadReport}>Download Report</ShinyButton>
+              </div>
             </Card>
-                  </div>
+          </motion.div>
           {/* Right: Quick modules */}
-          <div className="md:col-span-7 grid gap-4 md:grid-cols-2">
-            <Card>
-              <div className="mb-2 text-sm text-zinc-400">Quick Search</div>
+          <motion.div 
+            className="md:col-span-7 grid gap-3 sm:gap-4 md:grid-cols-2"
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            viewport={{ once: true }}
+          >
+            <Card className="cursor-pointer">
+              <div className="mb-2 text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">Quick Search</div>
               <div className="flex items-center justify-between">
-                <div className="text-white font-medium">RELIANCE</div>
-                <div className="text-xs text-zinc-400">Analysis ready in 45s</div>
-                  </div>
+                <div className="text-white font-medium transition-colors duration-300 hover:text-emerald-300">RELIANCE</div>
+                <div className="text-xs text-zinc-400 transition-colors duration-300 hover:text-zinc-300">Analysis ready in 45s</div>
+              </div>
             </Card>
-            <Card>
-              <div className="mb-2 text-sm text-zinc-400">Valuation Models</div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-zinc-400">DCF Model</div>
-                  <div className="text-white">₹3,200</div>
+            <Card className="cursor-pointer">
+              <div className="mb-2 text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">Valuation Models</div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
+                <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105">
+                  <div className="text-zinc-400 transition-colors duration-300 hover:text-zinc-300">DCF Model</div>
+                  <div className="text-white transition-colors duration-300 hover:text-emerald-300">₹3,200</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <div className="text-zinc-400">P/E Multiple</div>
-                  <div className="text-white">₹2,950</div>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105">
+                  <div className="text-zinc-400 transition-colors duration-300 hover:text-zinc-300">P/E Multiple</div>
+                  <div className="text-white transition-colors duration-300 hover:text-emerald-300">₹2,950</div>
                 </div>
               </div>
             </Card>
-            <Card>
-              <div className="mb-2 text-sm text-zinc-400">Export Options</div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">PDF Report</div>
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">PowerPoint</div>
+            <Card className="cursor-pointer">
+              <div className="mb-2 text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">Export Options</div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
+                <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 cursor-pointer">PDF Report</div>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 cursor-pointer">PowerPoint</div>
               </div>
             </Card>
-            <Card>
-              <div className="mb-2 text-sm text-zinc-400">Trusted Stock Analysis Platform</div>
-              <div className="text-sm text-zinc-300">+10,000 Active Traders & Investors trust our AI-powered stock analysis tool for reliable investment recommendations.</div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <Card className="cursor-pointer">
+              <div className="mb-2 text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">Trusted Stock Analysis Platform</div>
+              <div className="text-sm text-zinc-300 transition-colors duration-300 hover:text-zinc-200">+10,000 Active Traders & Investors trust our AI-powered stock analysis tool for reliable investment recommendations.</div>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 {['HDFC','ICICI','Kotak','Zerodha','Groww','Angel'].map((n) => (
-                  <div key={n} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-zinc-300">{n}</div>
+                  <div key={n} className="rounded-lg border border-white/10 bg-white/5 px-2 sm:px-3 py-2 text-center text-zinc-300 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 hover:text-white cursor-pointer">{n}</div>
                 ))}
-            </div>
+              </div>
             </Card>
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
       {/* Features */}
-      
-<div className="mx-auto w-full max-w-6xl px-6 py-14  flex h-[100vh] items-center justify-center">
-<div className="mx-auto w-full max-w-6xl px-6 py-14  flex ">
-
-      <ScrollReveal
-  baseOpacity={0}
-  enableBlur={true}
-  baseRotation={5}
-  blurStrength={10}
->
-  AskAlpha turns raw market noise into clear, actionable insights.
-  No spreadsheets, no guesswork—just fast, professional-grade equity research
-  with transparent sources and buy/sell/hold recommendations in under 60 seconds.
-</ScrollReveal>
-                  </div>
-                </div>
-                
+      <motion.div 
+        className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 sm:py-14 flex min-h-[60vh] sm:min-h-[80vh] items-center justify-center"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 1 }}
+        viewport={{ once: true }}
+      >
+        <ScrollReveal
+          baseOpacity={0}
+          enableBlur={true}
+          baseRotation={5}
+          blurStrength={10}
+        >
+          AskAlpha turns raw market noise into clear, actionable insights.
+          No spreadsheets, no guesswork—just fast, professional-grade equity research
+          with transparent sources and buy/sell/hold recommendations in under 60 seconds.
+        </ScrollReveal>
+      </motion.div>
 
       {/* Stock Analysis Features */}
-      <section id="features" className="mx-auto w-full max-w-6xl px-6 py-14">
+      <motion.section 
+        id="features" 
+        className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 sm:py-14"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         <SectionTitle eyebrow="features" title="Stock Analysis Features" />
-        <p className="mb-6 max-w-3xl text-zinc-400">
+        <p className="mb-6 max-w-3xl text-sm sm:text-base text-zinc-400">
           Professional Stock Research Tool with AI‑Powered Investment Analysis. Advanced equity research platform that delivers institutional‑grade stock analysis and investment recommendations. Perfect for traders, financial advisors, and investment professionals.
         </p>
-        <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2">
+        <ul className="grid grid-cols-1 grid-rows-none gap-3 sm:gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2">
           <GridItem
             area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
             icon={<Zap className="h-4 w-4 text-black dark:text-neutral-400" />}
@@ -431,8 +564,8 @@ export default function AskAlphaLanding() {
             title="Universal – Global Coverage"
             description="Works for NIFTY heavyweights, SME IPOs, and U.S. tech names with real‑time data."
           />
-                </ul>
-      </section>
+        </ul>
+      </motion.section>
 
       
 
@@ -441,13 +574,20 @@ export default function AskAlphaLanding() {
       
 
       {/* Templates */}
-      <section id="templates" className="mx-auto w-full max-w-6xl px-6 py-16">
+      <motion.section 
+        id="templates" 
+        className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-12 sm:py-16"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         <SectionTitle
           eyebrow="kits"
           title="Why AskAlpha is the Best Stock Analysis Tool"
-          cta={<ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10">Browse templates</ShinyButton>}
+          cta={<ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10" onClick={handleBrowseTemplates}>Browse templates</ShinyButton>}
         />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[ 
             { title: "Traditional Research", copy: "Hours to build models and parse filings" },
             { title: "AskAlpha", copy: "60s full report generation with Buy/Sell/Hold + confidence" },
@@ -455,40 +595,58 @@ export default function AskAlphaLanding() {
             { title: "Compliance", copy: "Audit trail & SEBI compliance with citations" },
             { title: "Coverage", copy: "NSE/BSE + NYSE/NASDAQ and more" },
             { title: "Security", copy: "End‑to‑end encryption with source citations" },
-          ].map(({ title, copy }) => (
-            <Card key={title}>
-              <div className="mb-3 flex items-center gap-2 text-zinc-200">{title}</div>
-              <p className="text-sm text-zinc-400">{copy}</p>
-            </Card>
+          ].map(({ title, copy }, index) => (
+            <motion.div
+              key={title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="cursor-pointer"
+            >
+              <Card>
+                <div className="mb-3 flex items-center gap-2 text-zinc-200 transition-colors duration-300 hover:text-white">
+                  {title}
+                </div>
+                <p className="text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-300">{copy}</p>
+              </Card>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* Quick setup */}
-      <section className="mx-auto w-full max-w-6xl px-6 pb-24">
-        <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-10 text-center">
+      <motion.section 
+        className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-16 sm:pb-24"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
+        <div className="relative overflow-hidden rounded-[20px] sm:rounded-[28px] border border-white/10 bg-white/[0.04] p-6 sm:p-10 text-center">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_115%,rgba(142,252,255,0.2),transparent_60%)]" />
-          <div className="text-sm uppercase tracking-[0.22em] text-zinc-400">Start Your Free Stock Analysis</div>
-          <div className="mt-2 text-3xl font-semibold text-white">Get Buy/Sell/Hold Recommendations Now</div>
-          <div className="mx-auto mt-6 grid max-w-2xl grid-cols-3 gap-3 text-xs text-zinc-400">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">AAPL</div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">MSFT</div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">RELIANCE</div>
-                </div>
-          <div className="mt-8 flex justify-center gap-3">
-            <ShinyButton>Try free stock analysis</ShinyButton>
-            <ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10">Get Report</ShinyButton>
-              </div>
+          <div className="text-xs sm:text-sm uppercase tracking-[0.22em] text-zinc-400">Start Your Free Stock Analysis</div>
+          <div className="mt-2 text-2xl sm:text-3xl font-semibold text-white">Get Buy/Sell/Hold Recommendations Now</div>
+          <div className="mx-auto mt-4 sm:mt-6 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3 text-xs text-zinc-400">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 hover:text-white cursor-pointer">AAPL</div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 hover:text-white cursor-pointer">MSFT</div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 py-2 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 hover:text-white cursor-pointer">RELIANCE</div>
+          </div>
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center gap-3">
+            <ShinyButton className="transition-all duration-300 hover:scale-105 hover:shadow-lg" onClick={handleTryFreeAnalysis}>Try free stock analysis</ShinyButton>
+            <ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:!bg-white/10" onClick={handleGetReport}>Get Report</ShinyButton>
+          </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-[-18%] mx-auto h-56 w-[85%] rounded-[40px] bg-[radial-gradient(50%_120%_at_50%_-20%,rgba(255,255,255,0.25),transparent_60%)]" />
-              </div>
-        <div className="mt-10 flex items-center justify-between text-xs text-zinc-500">
+        </div>
+        <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4">
           <span>© {new Date().getFullYear()} Ask Alpha</span>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-zinc-300">Privacy</a>
-            <a href="#" className="hover:text-zinc-300">Terms</a>
+            <a href="/privacy" className="hover:text-zinc-300 transition-all duration-300 hover:scale-105 cursor-pointer">Privacy</a>
+            <a href="/terms" className="hover:text-zinc-300 transition-all duration-300 hover:scale-105 cursor-pointer">Terms</a>
           </div>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

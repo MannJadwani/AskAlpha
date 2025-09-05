@@ -108,7 +108,7 @@ Focus on the most recent data and provide specific numbers with sources. This an
             content: researchPrompt
           }
         ],
-        temperature: 0.2,
+        temperature: 1,
         max_tokens: 8000,
         return_citations: true
       })
@@ -204,7 +204,7 @@ Return ONLY valid JSON without any additional text or explanation.`;
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.2
+      temperature: 1
     });
 
     const recommendationJson = completion.choices[0].message.content;
