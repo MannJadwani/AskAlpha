@@ -1,3 +1,22 @@
+## SEO Health
+
+- [ ] Sitemap 200 + application/xml at https://www.askalpha.tech/sitemap.xml
+- [ ] Robots allows /
+- [ ] Apex → www 308 redirect
+- [ ] Blog posts: absolute canonical to self
+- [ ] No “noindex” on public pages
+- [ ] /blog lists all non-draft posts and homepage links to 3–5 posts
+- [ ] JSON-LD present on posts
+- [ ] OG/Twitter images are absolute
+
+Verification commands:
+
+```bash
+curl -IL https://www.askalpha.tech/sitemap.xml
+curl -IL https://www.askalpha.tech/blog/<some-slug>
+npm run lint:seo
+npm run build && npm start
+```
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -31,7 +31,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://askalpha.tech'),
+  // SEO: set canonical site root to the www host
+  metadataBase: new URL('https://www.askalpha.tech'),
   title: {
     default: 'AskAlpha – AI Stock Analysis & Buy/Sell/Hold Recommendations',
     template: '%s | AskAlpha',
@@ -50,11 +51,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'AskAlpha – AI Stock Analysis & Buy/Sell/Hold Recommendations',
     description: 'Get instant AI-powered stock analysis. Professional equity research for traders, investors, and advisors.',
-    url: '/',
+    url: 'https://www.askalpha.tech/',
     siteName: 'AskAlpha',
-          images: [
-        { url: '/assets/app.png', width: 1200, height: 630, alt: 'AskAlpha – AI Stock Analysis' },
-      ],
+    images: [
+      { url: 'https://www.askalpha.tech/assets/app.png', width: 1200, height: 630, alt: 'AskAlpha – AI Stock Analysis' },
+    ],
     locale: 'en_US',
     type: 'website',
   },
@@ -62,16 +63,26 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'AskAlpha – AI Stock Analysis',
     description: 'Free AI stock analysis with Buy/Sell/Hold in 60s. Global coverage and SEBI-compliant outputs.',
-          images: ['/assets/app.png'],
+    images: ['https://www.askalpha.tech/assets/app.png'],
     creator: '@askalpha',
   },
   icons: {
     icon: '/assets/logo/icon.png',
   },
+  // Robots: default allow
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-video-preview': -1,
+      'max-snippet': -1,
+    },
   },
+  // Global canonical for the homepage
+  alternates: { canonical: 'https://www.askalpha.tech' },
 };
 
 // Add a call to initialize database when the app starts

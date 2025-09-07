@@ -46,10 +46,12 @@ export default function BlogPage() {
     return Array.from(tags).sort();
   }, []);
 
-  // Sort posts by publication date (newest first) and then filter
+  // Sort posts by publication date (newest first) and then filter (exclude drafts)
   const filteredPosts = useMemo(() => {
     // First sort by date (newest first)
-    const sortedPosts = [...blogData.posts].sort((a, b) => 
+    const sortedPosts = [...blogData.posts]
+      .filter((p: any) => !p?.draft)
+      .sort((a, b) => 
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
     );
 

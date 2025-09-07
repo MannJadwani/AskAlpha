@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "lint:seo": "grep -RniE 'noindex|nofollow|X-Robots-Tag' app | grep -vE 'app/(api|admin|drafts)' || echo 'OK'",
+    "test:headers": "node scripts/test-headers.mjs",
+    "test:canonicals": "node scripts/test-canonicals.mjs"
   },
   "dependencies": {
     "@auth/supabase-adapter": "^1.10.0",
