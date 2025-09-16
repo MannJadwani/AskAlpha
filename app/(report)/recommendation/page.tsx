@@ -12,8 +12,10 @@ import {
   MinusIcon,
   ChartBarIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
+import { TrendingUp, IndianRupee, Percent, BarChart3, LineChart, Gauge, Activity, Landmark, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface PerplexityAnalysis {
   content: string;
@@ -35,10 +37,11 @@ interface RecommendationData {
   perplexityAnalysis: PerplexityAnalysis;
   recommendation: Recommendation;
   analysisTimestamp: string;
+  structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[] } | null;
 }
 
 export default function RecommendationPage() {
-  const { currentUser, fetchUser } = useAuth();
+  const { currentUser, fetchUser, creditsData } = useAuth();
   const [companyInput, setCompanyInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'input' | 'researching' | 'structuring' | 'complete'>('input');
@@ -48,6 +51,12 @@ export default function RecommendationPage() {
   const [mode, setMode] = useState<'stock' | 'ipo'>('stock');
   const [ipoInput, setIpoInput] = useState('');
   const [ipoMarkdown, setIpoMarkdown] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [showDetailed, setShowDetailed] = useState(false);
 
   // Prefill from query string and auto-trigger
   useEffect(() => {
@@ -207,6 +216,39 @@ export default function RecommendationPage() {
     }
   };
 
+  const handleAskFollowup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !recommendationData) return;
+    const question = chatInput.trim();
+    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setChatInput('');
+    setChatLoading(true);
+    setChatError(null);
+    try {
+      const res = await fetch('/api/recommendation-followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          context: {
+            companyName: companyInput,
+            ...recommendationData
+          }
+        })
+      });
+      if (!res.ok) {
+        const ed = await res.json();
+        throw new Error(ed.error || 'Failed to get answer');
+      }
+      const data = await res.json();
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.answer as string }]);
+    } catch (err: any) {
+      setChatError(err?.message || 'Failed to get answer');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const handleAnalyzeIPO = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ipoInput.trim()) return;
@@ -257,6 +299,60 @@ export default function RecommendationPage() {
     }
   };
 
+  const getActionBorderClasses = (action: string) => {
+    switch (action) {
+      case 'BUY':
+        return '';
+      case 'SELL':
+        return '';
+      case 'HOLD':
+        return '';
+      default:
+        return 'border-l-8 border-l-zinc-300/60';
+    }
+  };
+
+  const getKpiStyle = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes('revenue') || l.includes('sales') || l.includes('market cap') || l.includes('price')) {
+      return 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200';
+    }
+    if (l.includes('p/e') || l.includes('valuation') || l.includes('pe ')) {
+      return 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-800 dark:text-cyan-200';
+    }
+    if (l.includes('margin') || l.includes('ebit') || l.includes('ebitda')) {
+      return 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-200';
+    }
+    if (l.includes('%') || l.includes('growth') || l.includes('roe') || l.includes('roce')) {
+      return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
+    }
+    return 'bg-muted/50 border-border text-foreground';
+  };
+
+  const getKpiIcon = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes('price') || l.includes('revenue') || l.includes('market cap')) return <IndianRupee className="h-4 w-4" />;
+    if (l.includes('margin') || l.includes('%') || l.includes('growth')) return <Percent className="h-4 w-4" />;
+    if (l.includes('p/e') || l.includes('pe ')) return <Gauge className="h-4 w-4" />;
+    if (l.includes('eps')) return <Activity className="h-4 w-4" />;
+    if (l.includes('valuation')) return <BarChart3 className="h-4 w-4" />;
+    if (l.includes('roe') || l.includes('roce')) return <LineChart className="h-4 w-4" />;
+    if (l.includes('debt') || l.includes('balance')) return <Landmark className="h-4 w-4" />;
+    return <TrendingUp className="h-4 w-4" />;
+  };
+
+  const getSectionIcon = (keyOrTitle: string) => {
+    const k = keyOrTitle.toLowerCase();
+    if (k.includes('financial')) return <BarChart3 className="h-4 w-4" />;
+    if (k.includes('valuation') || k.includes('multiple')) return <Gauge className="h-4 w-4" />;
+    if (k.includes('fundamental') || k.includes('moat') || k.includes('business')) return <Landmark className="h-4 w-4" />;
+    if (k.includes('news') || k.includes('event')) return <Activity className="h-4 w-4" />;
+    if (k.includes('industry') || k.includes('trend')) return <LineChart className="h-4 w-4" />;
+    if (k.includes('risk')) return <AlertTriangle className="h-4 w-4" />;
+    if (k.includes('outlook') || k.includes('catalyst')) return <TrendingUp className="h-4 w-4" />;
+    return <BarChart3 className="h-4 w-4" />;
+  };
+
   const formatINR = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -283,15 +379,36 @@ export default function RecommendationPage() {
 
   return (
     <div className="items-center justify-center w-full flex flex-col">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+      <div className="mx-auto max-w-7xl px-6 py-12">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">
             AI Investment Recommendations
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Get comprehensive investment analysis powered by Perplexity's real-time research and GPT's structured insights
+          Enter company name or ticker symbol to get investment recommendations.
           </p>
+        </div>
+
+        {/* Credits status banner */}
+        <div className="max-w-3xl mx-auto mb-6">
+          {Number(creditsData) === 0 ? (
+            <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 flex items-center justify-between">
+              <div className="text-sm">
+                <div className="font-semibold text-red-800 dark:text-red-200 mb-0.5">You’re out of credits</div>
+                <div className="text-red-700 dark:text-red-300">Upgrade to continue generating analyses.</div>
+              </div>
+              <a href="/pricing" className="px-3 py-2 rounded-lg text-sm font-medium bg-black text-white dark:bg-white/5 dark:text-zinc-200 ring-1 ring-black/20 dark:ring-white/10">Go Pro</a>
+            </div>
+          ) : Number(creditsData) <= 2 ? (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex items-center justify-between">
+              <div className="text-sm">
+                <div className="font-semibold text-amber-900 dark:text-amber-200 mb-0.5">Low credits</div>
+                <div className="text-amber-800 dark:text-amber-300">Remaining: {creditsData}. Consider upgrading for more.</div>
+              </div>
+              <a href="/pricing" className="px-3 py-2 rounded-lg text-sm font-medium bg-black text-white dark:bg-white/5 dark:text-zinc-200 ring-1 ring-black/20 dark:ring-white/10">Go Pro</a>
+            </div>
+          ) : null}
         </div>
 
         {/* Mode Toggle */}
@@ -301,13 +418,13 @@ export default function RecommendationPage() {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full">
           {/* Input Form */}
           {currentStep === 'input' && mode==='stock' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl"
+            className={`rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl ${Number(creditsData) === 0 ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <form id="recommendation-form" onSubmit={handleAnalyze} className="space-y-6">
                 <div>
@@ -321,7 +438,7 @@ export default function RecommendationPage() {
                     onChange={(e) => setCompanyInput(e.target.value)}
                     placeholder="e.g., Apple, AAPL, Tesla, TSLA"
                     className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg"
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || Number(creditsData) === 0}
                   />
                 </div>
 
@@ -339,7 +456,7 @@ export default function RecommendationPage() {
 
                 <ShinyButton
                   type="submit"
-                  disabled={isAnalyzing || !companyInput.trim() || currentUser?.frequency === '0'}
+                  disabled={isAnalyzing || !companyInput.trim() || Number(creditsData) === 0}
                   className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
                 >
                   Generate Investment Recommendation
@@ -427,27 +544,30 @@ export default function RecommendationPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8"
             >
-              {/* Recommendation Card */}
+              {/* Recommendation + KPI Row */}
               <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                <div className={`p-8 border-l-8 ${getRecommendationColor(recommendationData.recommendation.action).replace('text-', 'border-').replace('bg-', '').replace('border-', 'border-l-')}`}>
-                  <div className="flex items-center justify-between mb-6">
+                <div className={`p-8 ${getActionBorderClasses(recommendationData.recommendation.action)}`}>
+                  <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center space-x-4">
                       <div className={`p-3 rounded-xl ${getRecommendationColor(recommendationData.recommendation.action)}`}>
                         {getRecommendationIcon(recommendationData.recommendation.action)}
                       </div>
-                      <div>
-                        <h2 className="text-3xl font-bold text-foreground">
-                          {recommendationData.recommendation.action}
-                        </h2>
-                        <p className="text-muted-foreground">
-                          Confidence: {recommendationData.recommendation.confidence}%
-                        </p>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                            {recommendationData.recommendation.action}
+                          </h2>
+                          <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-foreground/80">
+                            Confidence {recommendationData.recommendation.confidence}%
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">Based on recent research and structured analysis</p>
                       </div>
                     </div>
                     {recommendationData.recommendation.targetPrice ? (
                       <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Target Price</p>
-                        <p className="text-2xl font-bold text-foreground">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Target Price</p>
+                        <p className="text-2xl font-semibold text-foreground">
                           {formatINR(recommendationData.recommendation.targetPrice)}
                         </p>
                         {recommendationData.recommendation.currentPrice && (
@@ -458,24 +578,52 @@ export default function RecommendationPage() {
                       </div>
                     ) : (
                       <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Price Target</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Price Target</p>
                         <p className="text-lg font-medium text-muted-foreground">
                           Not Available
                         </p>
                       </div>
                     )}
                   </div>
+ 
+                  {/* KPI Row: show if structured has kpis */}
+                  {recommendationData.structuredAnalysis?.kpis?.length === 8 && (
+                    <div className="rounded-2xl border border-border bg-card/50 p-4 sm:p-6 mb-6">
+                      {(() => {
+                        const list = recommendationData.structuredAnalysis?.kpis || [];
+                        return (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                            {list.map((item, idx) => {
+                              const label = item.label;
+                              const value = item.value;
+                              return (
+                                <div key={`kpi-${idx}`} className={`flex items-start gap-3 p-4 ${idx % 2 === 1 ? 'sm:border-l sm:border-border' : ''} ${idx >= 2 ? 'sm:border-t sm:border-border' : ''} ${idx % 4 !== 0 ? 'lg:border-l lg:border-border' : ''} ${idx >= 4 ? 'lg:border-t lg:border-border' : ''}`}>
+                                  <div className="w-10 h-10 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-foreground/80">{getKpiIcon(label)}</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-sm text-muted-foreground mb-1 whitespace-normal break-words">{label}</div>
+                                    <div className="text-2xl sm:text-3xl font-semibold text-foreground leading-tight whitespace-normal break-words">{value}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-3">Key Reasoning</h3>
-                      <p className="text-foreground/90 leading-relaxed">
+                      <h3 className="text-base font-semibold tracking-wide text-foreground mb-2">Key Reasoning</h3>
+                      <p className="text-foreground/90 leading-relaxed text-sm">
                         {recommendationData.recommendation.reasoning}
                       </p>
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-3">Time Horizon</h3>
-                      <p className="text-foreground/90">
+                      <h3 className="text-base font-semibold tracking-wide text-foreground mb-2">Time Horizon</h3>
+                      <p className="text-foreground/90 text-sm">
                         {recommendationData.recommendation.timeHorizon}
                       </p>
                     </div>
@@ -484,29 +632,29 @@ export default function RecommendationPage() {
 
                 {/* Key Factors */}
                 <div className="px-8 py-6 border-t border-border bg-muted">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Key Factors</h3>
+                  <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Key Factors</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-sm font-medium text-emerald-300 mb-2">Supporting Factors</h4>
-                      <ul className="space-y-1">
+                      <h4 className="text-xs uppercase tracking-wide text-foreground/70 mb-2">Supporting Factors</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {recommendationData.recommendation.keyFactors.map((factor, index) => (
-                            <li key={index} className="text-sm text-foreground/90 flex items-start">
-                            <span className="text-green-500 mr-2">•</span>
-                            {factor}
-                          </li>
+                          <div key={index} className="flex items-start gap-2 rounded-lg border border-border bg-card/50 p-3">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-foreground/90 leading-snug">{factor}</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-rose-300 mb-2">Risk Factors</h4>
-                      <ul className="space-y-1">
+                      <h4 className="text-xs uppercase tracking-wide text-foreground/70 mb-2">Risk Factors</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {recommendationData.recommendation.risks.map((risk, index) => (
-                            <li key={index} className="text-sm text-foreground/90 flex items-start">
-                            <span className="text-red-500 mr-2">•</span>
-                            {risk}
-                          </li>
+                          <div key={index} className="flex items-start gap-2 rounded-lg border border-border bg-card/50 p-3">
+                            <AlertTriangle className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-foreground/90 leading-snug">{risk}</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -514,16 +662,55 @@ export default function RecommendationPage() {
 
               {/* Detailed Analysis */}
               <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
-                <h3 className="text-xl font-semibold text-foreground mb-6">Detailed Analysis Report</h3>
-
-                <div className="prose prose-lg dark:prose-invert max-w-none">
-                  <div
-                    className="text-foreground/90 leading-relaxed"
-                    dangerouslySetInnerHTML={{
-                      __html: renderedMarkdown
-                    }}
-                  />
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <h3 className="text-xl font-semibold text-foreground">Detailed Analysis</h3>
+                  <button
+                    onClick={() => setShowDetailed(v => !v)}
+                    className="text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
+                  >
+                    {showDetailed ? 'Hide detailed analysis' : 'Read detailed analysis'}
+                  </button>
                 </div>
+
+                {!showDetailed ? (
+                  recommendationData.structuredAnalysis?.sections?.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {recommendationData.structuredAnalysis.sections.filter(s => s.key !== 'kpis').map((sec, idx) => {
+                        const html = (() => { try { return DOMPurify.sanitize(marked.parse(sec.content) as string); } catch { return DOMPurify.sanitize(sec.content); } })();
+                        return (
+                          <div key={sec.key + idx} className="rounded-2xl border border-border bg-card/60 p-5">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0">
+                                {getSectionIcon(sec.key || sec.title)}
+                              </div>
+                              <h4 className="text-base font-semibold text-foreground truncate">{sec.title}</h4>
+                            </div>
+                            <div className="prose dark:prose-invert max-w-none">
+                              <div
+                                className="text-foreground/90 leading-relaxed text-sm"
+                                dangerouslySetInnerHTML={{ __html: html }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="prose prose-lg dark:prose-invert max-w-none">
+                      <div
+                        className="text-foreground/90 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
+                      />
+                    </div>
+                  )
+                ) : (
+                  <div className="prose prose-lg dark:prose-invert max-w-none">
+                    <div
+                      className="text-foreground/90 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
+                    />
+                  </div>
+                )}
 
                 {/* Citations */}
                 {recommendationData.perplexityAnalysis.citations.length > 0 && (
@@ -564,7 +751,118 @@ export default function RecommendationPage() {
                   Analyze Another Company
                 </ShinyButton>
               </div>
+
+              {chatOpen && (
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Follow-up Q&A</h3>
+                  <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                    {messages.length === 0 && (
+                      <div className="text-sm text-muted-foreground">Ask about specific metrics, risks, valuation, or price targets.</div>
+                    )}
+                    {messages.map((m, idx) => (
+                      <div key={idx} className={m.role === 'user' ? 'text-foreground' : 'text-foreground'}>
+                        <div className={`rounded-xl px-4 py-3 border ${m.role === 'user' ? 'bg-muted/50 border-border' : 'bg-white/5 border-white/10'}`}>
+                          <div className="text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'Assistant'}</div>
+                          <div dangerouslySetInnerHTML={{ __html: (() => { try { return DOMPurify.sanitize(marked.parse(m.content) as string); } catch { return DOMPurify.sanitize(m.content); } })() }} />
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="text-sm text-muted-foreground">Thinking…</div>
+                    )}
+                    {chatError && (
+                      <div className="text-sm text-red-500">{chatError}</div>
+                    )}
+                  </div>
+                  <form onSubmit={handleAskFollowup} className="mt-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask a follow-up question…"
+                      className={`flex-1 px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground ${Number(creditsData) === 0 ? 'opacity-60' : ''}`}
+                      disabled={chatLoading || Number(creditsData) === 0}
+                    />
+                    <ShinyButton type="submit" disabled={chatLoading || !chatInput.trim() || Number(creditsData) === 0} className="px-6 py-3 !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10">
+                      Send
+                    </ShinyButton>
+                  </form>
+                  {Number(creditsData) === 0 && (
+                    <div className="mt-2 text-xs text-red-500">Out of credits. Upgrade to continue asking questions.</div>
+                  )}
+                </div>
+              )}
             </motion.div>
+          )}
+
+          {/* Floating Ask Follow-up Button */}
+          {currentStep === 'complete' && mode==='stock' && recommendationData && (
+            <>
+              <div className="fixed bottom-6 right-6 z-40" style={{ paddingRight: 'env(safe-area-inset-right)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                <button
+                  onClick={() => setChatOpen((v) => !v)}
+                  aria-label={chatOpen ? 'Hide Q&A' : 'Ask follow-up questions'}
+                  disabled={Number(creditsData) === 0}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-xl ring-1 transition-opacity
+                    ${chatOpen ? 'opacity-100' : 'opacity-95 hover:opacity-100'}
+                    ${Number(creditsData) === 0 ? 'opacity-60 pointer-events-none' : ''}
+                    bg-black text-white ring-black/20 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10`}
+                >
+                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                  <span className="text-sm font-medium">{chatOpen ? 'Hide Q&A' : 'Ask follow-up'}</span>
+                </button>
+              </div>
+
+              {/* Floating Chat Panel */}
+              <AnimatePresence>
+                {chatOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="fixed bottom-20 right-6 z-40 w-[min(92vw,420px)] rounded-2xl border border-border bg-card shadow-2xl"
+                    style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+                  >
+                    <div className="p-4 border-b border-border flex items-center justify-between">
+                      <div className="text-sm font-semibold">Follow-up Q&A</div>
+                      <button onClick={() => setChatOpen(false)} className="text-xs px-2 py-1 rounded-md border border-border hover:bg-white/5 dark:hover:bg-white/10">Close</button>
+                    </div>
+                    <div className="p-4 space-y-4 max-h-80 overflow-y-auto">
+                      {messages.length === 0 && (
+                        <div className="text-sm text-muted-foreground">Ask about specific metrics, risks, valuation, or price targets.</div>
+                      )}
+                      {messages.map((m, idx) => (
+                        <div key={idx} className={m.role === 'user' ? 'text-foreground' : 'text-foreground'}>
+                          <div className={`rounded-xl px-4 py-3 border ${m.role === 'user' ? 'bg-muted/50 border-border' : 'bg-white/5 border-white/10'}`}>
+                            <div className="text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'Assistant'}</div>
+                            <div dangerouslySetInnerHTML={{ __html: (() => { try { return DOMPurify.sanitize(marked.parse(m.content) as string); } catch { return DOMPurify.sanitize(m.content); } })() }} />
+                          </div>
+                        </div>
+                      ))}
+                      {chatLoading && (
+                        <div className="text-sm text-muted-foreground">Thinking…</div>
+                      )}
+                      {chatError && (
+                        <div className="text-sm text-red-500">{chatError}</div>
+                      )}
+                    </div>
+                    <form onSubmit={handleAskFollowup} className="p-4 border-t border-border flex gap-2">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Ask a follow-up question…"
+                        className={`flex-1 px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground ${Number(creditsData) === 0 ? 'opacity-60' : ''}`}
+                        disabled={chatLoading || Number(creditsData) === 0}
+                      />
+                      <ShinyButton type="submit" disabled={chatLoading || !chatInput.trim() || Number(creditsData) === 0} className="px-6 py-3 !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10">
+                        Send
+                      </ShinyButton>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
           )}
 
           {currentStep === 'complete' && mode==='ipo' && ipoMarkdown && (

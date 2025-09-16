@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { z } from 'zod';
+// @ts-ignore - cheerio has no default types in some environments; runtime import is fine
+// Screener HTML will be fetched and passed to the model; no HTML parsing library used
 
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -15,6 +17,20 @@ const RecommendationSchema = z.object({
   keyFactors: z.array(z.string()),
   risks: z.array(z.string()),
   timeHorizon: z.string()
+});
+
+// Structured analysis sections schema
+const StructuredSectionSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  content: z.string(), // markdown-safe content
+});
+
+const KpiItemSchema = z.object({ label: z.string(), value: z.string() });
+
+const StructuredAnalysisSchema = z.object({
+  sections: z.array(StructuredSectionSchema).min(1),
+  kpis: z.array(KpiItemSchema).length(8).optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -65,6 +81,19 @@ export async function POST(request: NextRequest) {
 9. Risk factors and potential challenges
 10. Growth prospects and future outlook
 11. Any recent regulatory or legal developments
+
+**MANDATORY METRICS (RETURN ALL IF POSSIBLE; IF A METRIC CANNOT BE FOUND AFTER EXHAUSTIVE SEARCH, SET VALUE TO "N/A"):**
+best source (screener.in)
+- Revenue (TTM, INR)
+- Profit Margin
+- EBIT Margin
+- EPS (TTM)
+- Return on Equity (ROE)
+- Return on Capital Employed (ROCE)
+- Book Value / Share
+- P/E
+
+Be rigorous and go deeper to locate these metrics: check company pages on screener.in, annual/quarterly reports, exchange filings, investor presentations, and credible aggregators. Cross-check numbers across multiple sources. Prefer INR figures and clearly note when conversion is applied.
 
 **PRICE ACCURACY REQUIREMENTS**:
 - For Indian companies: Get live/current price from NSE or BSE in Indian Rupees (₹), cross-reference with screener.in
@@ -125,15 +154,55 @@ Focus on the most recent data and provide specific numbers with sources. This an
     console.log('Perplexity research completed, generating structured recommendation...');
     console.log('Analysis content preview:', analysisContent.substring(0, 500) + '...');
 
-    // Step 2: Use GPT-4o with JSON mode to structure the analysis
+    // Step 2a: Ask OpenAI to extract a likely NSE/BSE stock symbol from the analysis/company name
     const openai = new OpenAI({
       apiKey: OPENAI_API_KEY,
     });
 
+    const symbolPrompt = `Given the company name "${companyName}" and the research excerpt below, return ONLY the likely NSE stock symbol (ticker) for the Indian exchange. If multiple classes exist, pick the primary. If unknown, return "N/A". Do not add any extra text.
+
+RESEARCH EXCERPT:
+${analysisContent.substring(0, 2000)}
+`;
+
+    const symbolResp = await openai.chat.completions.create({
+      model: 'gpt-5-mini',
+      messages: [
+        { role: 'system', content: 'You return only the NSE ticker, like RELIANCE, TCS, INFY, HDFCBANK or N/A.' },
+        { role: 'user', content: symbolPrompt }
+      ],
+      temperature: 1
+    });
+
+    const rawSymbol = (symbolResp.choices?.[0]?.message?.content || '').trim().toUpperCase();
+    const nseSymbol = rawSymbol.replace(/[^A-Z0-9]/g, '') || 'N/A';
+    console.log('Resolved NSE symbol:', nseSymbol);
+
+    // Step 2b: Fetch Screener HTML if we have a symbol (no parsing here; HTML will be provided to the model)
+    let screenerHtml = '';
+    if (nseSymbol !== 'N/A') {
+      try {
+        const url = `https://www.screener.in/company/${encodeURIComponent(nseSymbol)}/consolidated/`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AskAlphaBot/1.0)' } });
+        if (res.ok) {
+          const html = await res.text();
+          // Limit size to keep prompt reasonable
+          screenerHtml = html.slice(0, 100_000);
+        } else {
+          console.warn('Screener fetch failed', res.status);
+        }
+      } catch (e) {
+        console.warn('Screener fetch error:', e);
+      }
+    }
+
     const structuringPrompt = `Based on the following comprehensive analysis of ${companyName}, generate a structured investment recommendation in JSON format.
 
-ANALYSIS DATA:
+ANALYSIS DATA (from Perplexity):
 ${analysisContent}
+
+SCREENER COMPANY PAGE HTML (first 100k chars):
+${screenerHtml}
 
 Return a JSON object with this exact structure:
 {
@@ -192,7 +261,7 @@ Base your recommendation on:
 Return ONLY valid JSON without any additional text or explanation.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5-mini',
       messages: [
         {
           role: 'system',
@@ -217,14 +286,90 @@ Return ONLY valid JSON without any additional text or explanation.`;
       
       console.log('Recommendation generated successfully for:', companyName, validatedRecommendation.action);
       console.log('Price data extracted - Current:', validatedRecommendation.currentPrice, 'Target:', validatedRecommendation.targetPrice);
-      
+
+      // Step 3: Create labeled JSON sections for the analysis content
+      const sectionsPrompt = `Segment the following investment analysis into labeled sections and return JSON. Use markdown bullets and short paragraphs. Stick to content present in the analysis and do not invent data.
+
+ANALYSIS DATA:
+${analysisContent}
+
+Return a JSON object with this exact shape:
+{
+  "kpis": [
+    { "label": "Revenue (TTM, INR)", "value": "₹1,29,801 Cr" },
+    { "label": "Profit Margin", "value": "10.43%" },
+    { "label": "EBIT Margin", "value": "17.08%" },
+    { "label": "EPS (TTM)", "value": "₹60.23" },
+    { "label": "Return on Equity (ROE)", "value": "8.0%" },
+    { "label": "Return on Capital Employed (ROCE)", "value": "8.71%" },
+    { "label": "Book Value / Share", "value": "₹746.08" },
+    { "label": "P/E", "value": "22.4x" }
+  ],
+  "sections": [
+    { "key": "financial_performance", "title": "Financial Performance", "content": "- bullet..." },
+    { "key": "valuation", "title": "Valuation & Multiples", "content": "- bullet..." },
+    { "key": "fundamentals", "title": "Business Fundamentals & Moat", "content": "- bullet..." },
+    { "key": "news_events", "title": "Recent News & Events", "content": "- bullet..." },
+    { "key": "industry_trends", "title": "Industry & Trends", "content": "- bullet..." },
+    { "key": "risks", "title": "Risks", "content": "- bullet..." },
+    { "key": "outlook", "title": "Outlook & Catalysts", "content": "- bullet..." }
+  ]
+}
+
+Rules:
+- kpis: Provide EXACTLY 8 items in the specified order. If a metric is missing, set value to "N/A". Prefer INR where relevant.
+- Only include non-empty sections; omit empty ones.
+- Keep each section under 2200 characters.
+- Use markdown lists and short paragraphs.
+- Do not include price targets or current price unless present in the analysis.`;
+
+      const sectionsResp = await openai.chat.completions.create({
+        model: 'gpt-5-mini',
+        messages: [
+          { role: 'system', content: 'You are a precise data extractor. You return only valid JSON matching the requested schema.' },
+          { role: 'user', content: sectionsPrompt }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 1
+      });
+
+      let structuredAnalysis: z.infer<typeof StructuredAnalysisSchema> | null = null;
+      try {
+        const sectionsJson = sectionsResp.choices?.[0]?.message?.content || '{}';
+        const parsed = JSON.parse(sectionsJson);
+        structuredAnalysis = StructuredAnalysisSchema.parse(parsed);
+      } catch (e) {
+        console.warn('Structured sections generation failed, falling back to markdown only.');
+        structuredAnalysis = null;
+      }
+
+      // Fallback: ensure we always have 8 KPIs (pad with N/A) if sections generated kpi lines
+      let kpis: { label: string; value: string }[] | undefined = structuredAnalysis?.kpis;
+      if (!kpis) {
+        try {
+          const kpiSection = structuredAnalysis?.sections.find(s => s.key === 'kpis' || /kpi|key metrics/i.test(s.title));
+          if (kpiSection) {
+            const lines = (kpiSection.content || '')
+              .split('\n')
+              .map(l => l.replace(/^[-*]\s*/, '').trim())
+              .filter(Boolean);
+            kpis = lines.slice(0, 8).map(l => {
+              const [label, ...rest] = l.split(':');
+              return { label: (label || 'KPI').trim(), value: rest.join(':').trim() || 'N/A' };
+            });
+            while (kpis.length < 8) kpis.push({ label: 'KPI', value: 'N/A' });
+          }
+        } catch {}
+      }
+
       const result = {
         perplexityAnalysis: {
           content: analysisContent,
           citations: citations
         },
         recommendation: validatedRecommendation,
-        analysisTimestamp: new Date().toISOString()
+        analysisTimestamp: new Date().toISOString(),
+        structuredAnalysis: structuredAnalysis ? { ...structuredAnalysis, kpis } : { sections: [], kpis }
       };
 
       return NextResponse.json(result);
