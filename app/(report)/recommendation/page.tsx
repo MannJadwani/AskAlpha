@@ -57,6 +57,56 @@ export default function RecommendationPage() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [showDetailed, setShowDetailed] = useState(false);
+  const isDev = process.env.NODE_ENV === 'development';
+
+  const buildDemoData = (name: string): RecommendationData => {
+    const demoMarkdown = `# ${name || 'Demo Company'} Analysis\n\n- Strong brand presence in core markets\n- Stable margins with potential upside\n- Risks: regulatory changes, input cost volatility`;
+    return {
+      perplexityAnalysis: {
+        content: demoMarkdown,
+        citations: ['https://screener.in', 'https://www.nseindia.com']
+      },
+      recommendation: {
+        action: 'HOLD',
+        confidence: 72,
+        targetPrice: undefined,
+        currentPrice: undefined,
+        reasoning: 'Balanced risk-reward given current valuation and industry outlook.',
+        keyFactors: [
+          'Consistent revenue growth',
+          'Healthy cash flows',
+          'Diversified product mix',
+        ],
+        risks: [
+          'Commodity price fluctuations',
+          'Competitive intensity',
+        ],
+        timeHorizon: '6-12 months'
+      },
+      analysisTimestamp: new Date().toISOString(),
+      structuredAnalysis: {
+        kpis: [
+          { label: 'Revenue (TTM, INR)', value: '₹1,29,801 Cr' },
+          { label: 'Profit Margin', value: '10.4%' },
+          { label: 'EBIT Margin', value: '17.1%' },
+          { label: 'EPS (TTM)', value: '₹60.23' },
+          { label: 'Return on Equity (ROE)', value: '8.0%' },
+          { label: 'Return on Capital Employed (ROCE)', value: '8.7%' },
+          { label: 'Book Value / Share', value: '₹746.08' },
+          { label: 'P/E', value: '22.4x' },
+        ],
+        sections: [
+          { key: 'financial_performance', title: 'Financial Performance', content: '- Revenue growth steady\n- Margins stable' },
+          { key: 'valuation', title: 'Valuation & Multiples', content: '- P/E in line with peers\n- EV/EBITDA fair' },
+          { key: 'fundamentals', title: 'Business Fundamentals & Moat', content: '- Strong distribution\n- Brand moat' },
+          { key: 'news_events', title: 'Recent News & Events', content: '- Q4 results inline\n- Capex announced' },
+          { key: 'industry_trends', title: 'Industry & Trends', content: '- Demand resilient\n- Input cost easing' },
+          { key: 'risks', title: 'Risks', content: '- Regulation\n- Competition' },
+          { key: 'outlook', title: 'Outlook & Catalysts', content: '- Margin improvement\n- Market share gains' },
+        ]
+      }
+    };
+  };
 
   // Prefill from query string and auto-trigger
   useEffect(() => {
@@ -74,6 +124,18 @@ export default function RecommendationPage() {
       }, 50);
     }
   }, []);
+
+  // Reset view when switching between Stock and IPO tabs
+  useEffect(() => {
+    setCurrentStep('input');
+    setError(null);
+    setRecommendationData(null);
+    setRenderedMarkdown('');
+    setIpoMarkdown(null);
+    setIsAnalyzing(false);
+    setChatOpen(false);
+    setMessages([]);
+  }, [mode]);
 
   useEffect(() => {
     console.log('Current User recomendation page:', currentUser);
@@ -461,6 +523,20 @@ export default function RecommendationPage() {
                 >
                   Generate Investment Recommendation
                 </ShinyButton>
+                {isDev && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecommendationData(buildDemoData(companyInput || 'Demo Company'));
+                        setCurrentStep('complete');
+                      }}
+                      className="mt-3 text-xs px-3 py-2 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
+                    >
+                      Load demo report (dev mode)
+                    </button>
+                  </div>
+                )}
               </form>
 
               {/* Feature highlights */}

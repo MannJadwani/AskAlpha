@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
     const userPrompt = `QUESTION:\n${question}\n\nCONTEXT (do not repeat verbatim):\n- Company: ${context.companyName ?? 'N/A'}\n- Recommendation: ${context.recommendation.action} (confidence ${context.recommendation.confidence}%)\n- Time Horizon: ${context.recommendation.timeHorizon}\n- Reasoning: ${context.recommendation.reasoning}\n- Key Factors: ${context.recommendation.keyFactors.join(', ')}\n- Risks: ${context.recommendation.risks.join(', ')}\n- Current Price: ${context.recommendation.currentPrice ?? 'N/A'}\n- Target Price: ${context.recommendation.targetPrice ?? 'N/A'}\n\nDETAILED ANALYSIS (for reference):\n${context.perplexityAnalysis.content}\n\nSOURCES (may cite inline as [Source N]):\n${context.perplexityAnalysis.citations.map((c, i) => `[${i + 1}] ${c}`).join('\n')}`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5-mini',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 1,
-      max_completion_tokens: 800
+      temperature: 0.2,
+      max_tokens: 800
     });
 
     const answer = completion.choices?.[0]?.message?.content ?? 'Sorry, I could not generate a response.';

@@ -9,12 +9,13 @@ export default function MobileBottomNav() {
   const items = [
     { href: '/recommendation', label: 'AI', icon: <Sparkles className="h-5 w-5" /> },
     { href: '/company-report', label: 'Report', icon: <FileText className="h-5 w-5" /> },
+    { href: '/trade', label: 'Trade', icon: <FileText className="h-5 w-5" /> },
     { href: '/pricing', label: 'Pro', icon: <User2 className="h-5 w-5" /> },
   ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/90 backdrop-blur px-3 py-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
-      <ul className="grid grid-cols-3 gap-2">
+      <ul className="grid grid-cols-4 gap-2">
         {items.map((item) => {
           const active = pathname === item.href;
           return (
