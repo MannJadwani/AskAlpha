@@ -27,10 +27,13 @@ const StructuredSectionSchema = z.object({
 });
 
 const KpiItemSchema = z.object({ label: z.string(), value: z.string() });
+const RevenueItemSchema = z.object({ year: z.string(), inr: z.number() });
 
 const StructuredAnalysisSchema = z.object({
   sections: z.array(StructuredSectionSchema).min(1),
-  kpis: z.array(KpiItemSchema).length(8).optional()
+  kpis: z.array(KpiItemSchema).length(8).optional(),
+  revenues_5yr: z.array(RevenueItemSchema).length(5).optional(),
+  profits_5yr: z.array(RevenueItemSchema).length(5).optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -290,8 +293,11 @@ Return ONLY valid JSON without any additional text or explanation.`;
       // Step 3: Create labeled JSON sections for the analysis content
       const sectionsPrompt = `Segment the following investment analysis into labeled sections and return JSON. Use markdown bullets and short paragraphs. Stick to content present in the analysis and do not invent data.
 
-ANALYSIS DATA:
+ANALYSIS DATA (from Perplexity):
 ${analysisContent}
+
+SCREENER COMPANY PAGE HTML (first 100k chars, prefer this for exact figures if present):
+${screenerHtml}
 
 Return a JSON object with this exact shape:
 {
@@ -304,6 +310,20 @@ Return a JSON object with this exact shape:
     { "label": "Return on Capital Employed (ROCE)", "value": "8.71%" },
     { "label": "Book Value / Share", "value": "₹746.08" },
     { "label": "P/E", "value": "22.4x" }
+  ],
+  "revenues_5yr": [
+    { "year": "2021", "inr": 100000 },
+    { "year": "2022", "inr": 115000 },
+    { "year": "2023", "inr": 130000 },
+    { "year": "2024", "inr": 148000 },
+    { "year": "2025", "inr": 159000 }
+  ],
+  "profits_5yr": [
+    { "year": "2021", "inr": 9000 },
+    { "year": "2022", "inr": 10500 },
+    { "year": "2023", "inr": 12000 },
+    { "year": "2024", "inr": 13400 },
+    { "year": "2025", "inr": 14100 }
   ],
   "sections": [
     { "key": "financial_performance", "title": "Financial Performance", "content": "- bullet..." },
@@ -318,6 +338,8 @@ Return a JSON object with this exact shape:
 
 Rules:
 - kpis: Provide EXACTLY 8 items in the specified order. If a metric is missing, set value to "N/A". Prefer INR where relevant.
+- revenues_5yr: Provide EXACTLY 5 annual revenue points in INR with years as strings (e.g., "2021"). If any year is missing after exhaustive search (including the provided SCREENER HTML if available in the earlier step), set inr to 0 and still include 5 items.
+- profits_5yr: Provide EXACTLY 5 annual profit (PAT/Net income) points in INR with years as strings. If any year is missing after exhaustive search, set inr to 0 and still include 5 items.
 - Only include non-empty sections; omit empty ones.
 - Keep each section under 2200 characters.
 - Use markdown lists and short paragraphs.
@@ -330,7 +352,8 @@ Rules:
           { role: 'user', content: sectionsPrompt }
         ],
         response_format: { type: 'json_object' },
-        temperature: 1
+        temperature: 0.2,
+        max_tokens: 1200
       });
 
       let structuredAnalysis: z.infer<typeof StructuredAnalysisSchema> | null = null;
@@ -345,6 +368,8 @@ Rules:
 
       // Fallback: ensure we always have 8 KPIs (pad with N/A) if sections generated kpi lines
       let kpis: { label: string; value: string }[] | undefined = structuredAnalysis?.kpis;
+      const revenues: { year: string; inr: number }[] | undefined = structuredAnalysis?.revenues_5yr;
+      const profits: { year: string; inr: number }[] | undefined = structuredAnalysis?.profits_5yr;
       if (!kpis) {
         try {
           const kpiSection = structuredAnalysis?.sections.find(s => s.key === 'kpis' || /kpi|key metrics/i.test(s.title));
@@ -369,7 +394,7 @@ Rules:
         },
         recommendation: validatedRecommendation,
         analysisTimestamp: new Date().toISOString(),
-        structuredAnalysis: structuredAnalysis ? { ...structuredAnalysis, kpis } : { sections: [], kpis }
+        structuredAnalysis: structuredAnalysis ? { ...structuredAnalysis, kpis, revenues_5yr: revenues, profits_5yr: profits } : { sections: [], kpis, revenues_5yr: revenues, profits_5yr: profits }
       };
 
       return NextResponse.json(result);

@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 import { TrendingUp, IndianRupee, Percent, BarChart3, LineChart, Gauge, Activity, Landmark, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, LineChart as RLineChart, Line, CartesianGrid, Cell, Legend, ComposedChart, Area } from 'recharts';
 
 interface PerplexityAnalysis {
   content: string;
@@ -37,7 +38,7 @@ interface RecommendationData {
   perplexityAnalysis: PerplexityAnalysis;
   recommendation: Recommendation;
   analysisTimestamp: string;
-  structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[] } | null;
+  structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[]; revenues_5yr?: { year: string; inr: number }[]; profits_5yr?: { year: string; inr: number }[] } | null;
 }
 
 export default function RecommendationPage() {
@@ -58,6 +59,23 @@ export default function RecommendationPage() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [showDetailed, setShowDetailed] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
+  const [highlightAsk, setHighlightAsk] = useState(false);
+
+  const revenuePalette = ['#22c55e', '#06b6d4', '#8b5cf6', '#3b82f6', '#f43f5e'];
+  const profitStroke = '#8b5cf6';
+  const renderValueTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number | string }>; label?: string }) => {
+    if (active && payload && payload.length) {
+      const v = payload[0]?.value as number | string;
+      const num = typeof v === 'string' ? Number(v) : v;
+      return (
+        <div className="rounded-md border border-border bg-card px-2 py-1.5 text-xs shadow">
+          <div className="font-medium text-foreground">{label}</div>
+          <div className="text-foreground/90">{isNaN(Number(num)) ? String(v) : formatINR(Number(num))}</div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const buildDemoData = (name: string): RecommendationData => {
     const demoMarkdown = `# ${name || 'Demo Company'} Analysis\n\n- Strong brand presence in core markets\n- Stable margins with potential upside\n- Risks: regulatory changes, input cost volatility`;
@@ -85,6 +103,20 @@ export default function RecommendationPage() {
       },
       analysisTimestamp: new Date().toISOString(),
       structuredAnalysis: {
+        revenues_5yr: [
+          { year: String(new Date().getFullYear() - 4), inr: 98000 },
+          { year: String(new Date().getFullYear() - 3), inr: 110500 },
+          { year: String(new Date().getFullYear() - 2), inr: 124300 },
+          { year: String(new Date().getFullYear() - 1), inr: 141200 },
+          { year: String(new Date().getFullYear()), inr: 153900 },
+        ],
+        profits_5yr: [
+          { year: String(new Date().getFullYear() - 4), inr: 8200 },
+          { year: String(new Date().getFullYear() - 3), inr: 9300 },
+          { year: String(new Date().getFullYear() - 2), inr: 10450 },
+          { year: String(new Date().getFullYear() - 1), inr: 11800 },
+          { year: String(new Date().getFullYear()), inr: 12650 },
+        ],
         kpis: [
           { label: 'Revenue (TTM, INR)', value: '₹1,29,801 Cr' },
           { label: 'Profit Margin', value: '10.4%' },
@@ -136,6 +168,15 @@ export default function RecommendationPage() {
     setChatOpen(false);
     setMessages([]);
   }, [mode]);
+
+  // Briefly highlight the Ask Follow-up button after report generation
+  useEffect(() => {
+    if (currentStep === 'complete' && recommendationData && mode === 'stock') {
+      setHighlightAsk(true);
+      const t = setTimeout(() => setHighlightAsk(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [currentStep, recommendationData, mode]);
 
   useEffect(() => {
     console.log('Current User recomendation page:', currentUser);
@@ -267,6 +308,23 @@ export default function RecommendationPage() {
       }
 
       const data = await response.json();
+      // Fire secondary request for financials
+      try {
+        const finRes = await fetch('/api/company-financials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyName: companyInput.trim() })
+        });
+        if (finRes.ok) {
+          const fin = await finRes.json();
+          data.structuredAnalysis = {
+            ...(data.structuredAnalysis || { sections: [] }),
+            revenues_5yr: fin.revenues_5yr,
+            profits_5yr: fin.profits_5yr,
+            kpis: data.structuredAnalysis?.kpis
+          };
+        }
+      } catch {}
       setRecommendationData(data);
       setCurrentStep('complete');
       await updatePlanDetails();
@@ -377,16 +435,16 @@ export default function RecommendationPage() {
   const getKpiStyle = (label: string) => {
     const l = label.toLowerCase();
     if (l.includes('revenue') || l.includes('sales') || l.includes('market cap') || l.includes('price')) {
-      return 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200';
+      return 'bg-emerald-50/60 dark:bg-emerald-900/25 border-emerald-200/70 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200';
     }
     if (l.includes('p/e') || l.includes('valuation') || l.includes('pe ')) {
-      return 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-800 dark:text-cyan-200';
+      return 'bg-cyan-50/60 dark:bg-cyan-900/25 border-cyan-200/70 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200';
     }
     if (l.includes('margin') || l.includes('ebit') || l.includes('ebitda')) {
-      return 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-200';
+      return 'bg-violet-50/60 dark:bg-violet-900/25 border-violet-200/70 dark:border-violet-800 text-violet-900 dark:text-violet-200';
     }
     if (l.includes('%') || l.includes('growth') || l.includes('roe') || l.includes('roce')) {
-      return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
+      return 'bg-blue-50/60 dark:bg-blue-900/25 border-blue-200/70 dark:border-blue-800 text-blue-900 dark:text-blue-200';
     }
     return 'bg-muted/50 border-border text-foreground';
   };
@@ -738,6 +796,52 @@ export default function RecommendationPage() {
 
               {/* Detailed Analysis */}
               <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
+                {/* Revenue chart if available */}
+                {(recommendationData.structuredAnalysis?.revenues_5yr?.length === 5 || recommendationData.structuredAnalysis?.profits_5yr?.length === 5) && (
+                  <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Revenue bars */}
+                    {recommendationData.structuredAnalysis?.revenues_5yr?.length === 5 && (
+                      <div>
+                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Revenue (Last 5 Years)</h3>
+                        <div className="h-56 rounded-xl border border-border bg-card/50 p-3">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={recommendationData.structuredAnalysis.revenues_5yr}>
+                              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
+                              <XAxis dataKey="year" tick={{ fontSize: 11 }} tickMargin={8} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${Math.round(v/1000)}k`} />
+                              <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
+                              <RTooltip content={renderValueTooltip as any} />
+                              <Bar dataKey="inr" name="Revenue (INR)" radius={[6,6,0,0]}> 
+                                {recommendationData.structuredAnalysis.revenues_5yr.map((_, i) => (
+                                  <Cell key={`c-${i}`} fill={revenuePalette[i % revenuePalette.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    {/* Profit line chart */}
+                    {recommendationData.structuredAnalysis?.profits_5yr?.length === 5 && (
+                      <div>
+                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Profit (Last 5 Years)</h3>
+                        <div className="h-56 rounded-xl border border-border bg-card/50 p-3">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={recommendationData.structuredAnalysis.profits_5yr}>
+                              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
+                              <XAxis dataKey="year" tick={{ fontSize: 11 }} tickMargin={8} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${Math.round(v/1000)}k`} />
+                              <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
+                              <RTooltip content={renderValueTooltip as any} />
+                              <Area type="monotone" dataKey="inr" name="Profit (INR)" stroke={profitStroke} fill={profitStroke} fillOpacity={0.15} strokeWidth={2} />
+                              <Line type="monotone" dataKey="inr" stroke={profitStroke} strokeWidth={2} dot={{ r: 3 }} />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <h3 className="text-xl font-semibold text-foreground">Detailed Analysis</h3>
                   <button
@@ -875,18 +979,21 @@ export default function RecommendationPage() {
           {currentStep === 'complete' && mode==='stock' && recommendationData && (
             <>
               <div className="fixed bottom-6 right-6 z-40" style={{ paddingRight: 'env(safe-area-inset-right)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-                <button
-                  onClick={() => setChatOpen((v) => !v)}
-                  aria-label={chatOpen ? 'Hide Q&A' : 'Ask follow-up questions'}
-                  disabled={Number(creditsData) === 0}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-xl ring-1 transition-opacity
-                    ${chatOpen ? 'opacity-100' : 'opacity-95 hover:opacity-100'}
-                    ${Number(creditsData) === 0 ? 'opacity-60 pointer-events-none' : ''}
-                    bg-black text-white ring-black/20 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10`}
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">{chatOpen ? 'Hide Q&A' : 'Ask follow-up'}</span>
-                </button>
+                <div className="relative inline-block">
+                  <div className={`glow-border ${highlightAsk ? 'active' : ''}`} />
+                  <button
+                    onClick={() => setChatOpen((v) => !v)}
+                    aria-label={chatOpen ? 'Hide Q&A' : 'Ask follow-up questions'}
+                    disabled={Number(creditsData) === 0}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-xl ring-1 transition-opacity
+                      ${chatOpen ? 'opacity-100' : 'opacity-95 hover:opacity-100'}
+                      ${Number(creditsData) === 0 ? 'opacity-60 pointer-events-none' : ''}
+                      bg-black text-white ring-black/20 dark:bg-white/5 dark:text-zinc-200 dark:ring-white/10`}
+                  >
+                    <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                    <span className="text-sm font-medium">{chatOpen ? 'Hide Q&A' : 'Ask follow-up'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Floating Chat Panel */}
