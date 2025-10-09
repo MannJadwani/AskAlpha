@@ -12,6 +12,7 @@ import { FloatingDock } from "@/components/ui/floating-dock";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import FlowingMenu from "./components/ui/jsrepo/FlowingMenu/FlowingMenu";
 import ScrollReveal from "./components/ui/jsrepo/ScrollReveal/ScrollReveal";
+import Footer_01 from "@/components/ui/Footer";
 
 // 3D background (client-only)
 
@@ -191,8 +192,8 @@ export default function AskAlphaLanding() {
         .headline{font-family:'Archivo',system-ui,ui-sans-serif;letter-spacing:-0.02em}
       `}</style>
 
-      
-      
+
+
 
 
       {/* Floating dock for primary actions (moved from navbar) */}
@@ -211,69 +212,69 @@ export default function AskAlphaLanding() {
 
       {/* Hero */}
       <header className="relative mx-auto mt-6 w-full px-6 pb-18 h-[100vh]">
-      <div className="relative h-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
-        <GlowingEffect
-          blur={0}
-          borderWidth={3}
-          spread={80}
-          glow={true}
-          disabled={false}
-          proximity={64}
-          inactiveZone={0.01}
-        />
-        <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
-        <div className="absolute -left-24 top-10 h-72 w-[55rem] rotate-[8deg] rounded-full bg-[radial-gradient(closest-side,rgba(30,144,255,0.5),transparent)] blur-2xl" />
-          <div className="grid gap-8 md:grid-cols-2 h-full">
-            <div className="z-10 h-full flex justify-center flex-col">
-              <div className="mb-4 flex items-center gap-2">
-                <Badge>AI research engine</Badge>
-                <Badge>Equities · Indices · ETFs</Badge>
-              </div>
-              <h1 className="headline mb-4 text-4xl leading-[1.05] text-zinc-50 md:text-6xl">
-                Free AI Stock Analysis Tool –
-                <br />
-                Buy/Sell/Hold Recommendations
-              </h1>
-              <p className="mb-6 max-w-2xl text-base text-zinc-300 md:text-lg">
-                Get instant AI-powered stock analysis and investment recommendations in under 60 seconds. Professional equity research tool for traders, investors, and financial advisors. No spreadsheets, no guesswork—just actionable insights.
-              </p>
-              <div className="relative mt-4 max-w-xl">
-                <input
-                  type="text"
-                  placeholder="Enter stock symbol or company name (e.g., RELIANCE, AAPL, TCS)"
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 pr-36 text-sm text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-white/20 focus:border-transparent"
-                  value={heroInput}
-                  onChange={(e) => setHeroInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAnalyzeClick(); } }}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <ShinyButton className="px-5 py-2" onClick={handleAnalyzeClick}>Analyze</ShinyButton>
+        <div className="relative h-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
+          <GlowingEffect
+            blur={0}
+            borderWidth={3}
+            spread={80}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 dark:shadow-[0px_0px_27px_0px_#2D2D2D]">
+            <div className="absolute -left-24 top-10 h-72 w-[55rem] rotate-[8deg] rounded-full bg-[radial-gradient(closest-side,rgba(30,144,255,0.5),transparent)] blur-2xl" />
+            <div className="grid gap-8 md:grid-cols-2 h-full">
+              <div className="z-10 h-full flex justify-center flex-col">
+                <div className="mb-4 flex items-center gap-2">
+                  <Badge>AI research engine</Badge>
+                  <Badge>Equities · Indices · ETFs</Badge>
+                </div>
+                <h1 className="headline mb-4 text-4xl leading-[1.05] text-zinc-50 md:text-6xl">
+                  Free AI Stock Analysis Tool –
+                  <br />
+                  Buy/Sell/Hold Recommendations
+                </h1>
+                <p className="mb-6 max-w-2xl text-base text-zinc-300 md:text-lg">
+                  Get instant AI-powered stock analysis and investment recommendations in under 60 seconds. Professional equity research tool for traders, investors, and financial advisors. No spreadsheets, no guesswork—just actionable insights.
+                </p>
+                <div className="relative mt-4 max-w-xl">
+                  <input
+                    type="text"
+                    placeholder="Enter stock symbol or company name (e.g., RELIANCE, AAPL, TCS)"
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 pr-36 text-sm text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-white/20 focus:border-transparent"
+                    value={heroInput}
+                    onChange={(e) => setHeroInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAnalyzeClick(); } }}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <ShinyButton className="px-5 py-2" onClick={handleAnalyzeClick}>Analyze</ShinyButton>
+                  </div>
+                </div>
+                <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-400">
+                  <Badge>60-second stock analysis</Badge>
+                  <Badge>SEBI compliant research</Badge>
+                  <Badge>Global stock coverage</Badge>
                 </div>
               </div>
-              <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-400">
-                <Badge>60-second stock analysis</Badge>
-                <Badge>SEBI compliant research</Badge>
-                <Badge>Global stock coverage</Badge>
-              </div>
-            </div>
-            {/* Right visual: laptop + mobile mockups */}
-            <div className="relative flex justify-center items-center -mt-20">
-              {/* Laptop mockup (Safari frame with embedded UI) */}
-              <Safari url="askalpha.ai/app" imageSrc={desktopMock} width={1280} height={800} className="hidden md:block" />
-              
-              {/* Mobile mockup (iPhone 15 Pro) with embedded UI */}
-              <div className="absolute right-[-10px] bottom-[40px] hidden md:block">
-                <div className="scale-[0.42] origin-bottom-right">
-                  <Iphone15Pro src={mobileMock} />
+              {/* Right visual: laptop + mobile mockups */}
+              <div className="relative flex justify-center items-center -mt-20">
+                {/* Laptop mockup (Safari frame with embedded UI) */}
+                <Safari url="askalpha.ai/app" imageSrc={desktopMock} width={1280} height={800} className="hidden md:block" />
+
+                {/* Mobile mockup (iPhone 15 Pro) with embedded UI */}
+                <div className="absolute right-[-10px] bottom-[40px] hidden md:block">
+                  <div className="scale-[0.42] origin-bottom-right">
+                    <Iphone15Pro src={mobileMock} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-          </div>
-          
+
       </header>
-{/* Scroll stack (personas/use cases) */}
+      {/* Scroll stack (personas/use cases) */}
       <section id="personas" className="mx-auto w-full px-6 py-14 ">
         <SectionTitle
           eyebrow="who it's for"
@@ -317,22 +318,22 @@ export default function AskAlphaLanding() {
                   <div className="text-xl text-white">₹3,050.00</div>
                   <div className="text-emerald-400">+2.5% today</div>
                 </div>
-            <div>
+                <div>
                   <div className="text-zinc-400">Target Price</div>
                   <div className="text-xl text-white">₹3,400.00</div>
                   <div className="text-zinc-400">12-month target</div>
-                    </div>
+                </div>
                 <div>
                   <div className="text-zinc-400">Confidence</div>
                   <div className="text-xl text-white">87%</div>
                   <div className="text-zinc-400">High conviction</div>
-                  </div>
+                </div>
               </div>
               <div className="mt-6">
                 <ShinyButton className="w-full justify-center">Download Report</ShinyButton>
-            </div>
+              </div>
             </Card>
-                  </div>
+          </div>
           {/* Right: Quick modules */}
           <div className="md:col-span-7 grid gap-4 md:grid-cols-2">
             <Card>
@@ -340,7 +341,7 @@ export default function AskAlphaLanding() {
               <div className="flex items-center justify-between">
                 <div className="text-white font-medium">RELIANCE</div>
                 <div className="text-xs text-zinc-400">Analysis ready in 45s</div>
-                  </div>
+              </div>
             </Card>
             <Card>
               <div className="mb-2 text-sm text-zinc-400">Valuation Models</div>
@@ -366,32 +367,32 @@ export default function AskAlphaLanding() {
               <div className="mb-2 text-sm text-zinc-400">Trusted Stock Analysis Platform</div>
               <div className="text-sm text-zinc-300">+10,000 Active Traders & Investors trust our AI-powered stock analysis tool for reliable investment recommendations.</div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                {['HDFC','ICICI','Kotak','Zerodha','Groww','Angel'].map((n) => (
+                {['HDFC', 'ICICI', 'Kotak', 'Zerodha', 'Groww', 'Angel'].map((n) => (
                   <div key={n} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-zinc-300">{n}</div>
                 ))}
-            </div>
+              </div>
             </Card>
           </div>
         </div>
       </section>
       {/* Features */}
-      
-<div className="mx-auto w-full max-w-6xl px-6 py-14  flex h-[100vh] items-center justify-center">
-<div className="mx-auto w-full max-w-6xl px-6 py-14  flex ">
 
-      <ScrollReveal
-  baseOpacity={0}
-  enableBlur={true}
-  baseRotation={5}
-  blurStrength={10}
->
-  AskAlpha turns raw market noise into clear, actionable insights.
-  No spreadsheets, no guesswork—just fast, professional-grade equity research
-  with transparent sources and buy/sell/hold recommendations in under 60 seconds.
-</ScrollReveal>
-                  </div>
-                </div>
-                
+      <div className="mx-auto w-full max-w-6xl px-6 py-14  flex h-[100vh] items-center justify-center">
+        <div className="mx-auto w-full max-w-6xl px-6 py-14  flex ">
+
+          <ScrollReveal
+            baseOpacity={0}
+            enableBlur={true}
+            baseRotation={5}
+            blurStrength={10}
+          >
+            AskAlpha turns raw market noise into clear, actionable insights.
+            No spreadsheets, no guesswork—just fast, professional-grade equity research
+            with transparent sources and buy/sell/hold recommendations in under 60 seconds.
+          </ScrollReveal>
+        </div>
+      </div>
+
 
       {/* Stock Analysis Features */}
       <section id="features" className="mx-auto w-full max-w-6xl px-6 py-14">
@@ -430,14 +431,14 @@ export default function AskAlphaLanding() {
             title="Universal – Global Coverage"
             description="Works for NIFTY heavyweights, SME IPOs, and U.S. tech names with real‑time data."
           />
-                </ul>
+        </ul>
       </section>
 
-      
 
 
 
-      
+
+
 
       {/* Templates */}
       <section id="templates" className="mx-auto w-full max-w-6xl px-6 py-16">
@@ -447,7 +448,7 @@ export default function AskAlphaLanding() {
           cta={<ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10">Browse templates</ShinyButton>}
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {[ 
+          {[
             { title: "Traditional Research", copy: "Hours to build models and parse filings" },
             { title: "AskAlpha", copy: "60s full report generation with Buy/Sell/Hold + confidence" },
             { title: "Data Freshness", copy: "15‑minute data refresh for real‑time context" },
@@ -473,21 +474,18 @@ export default function AskAlphaLanding() {
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">AAPL</div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">MSFT</div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">RELIANCE</div>
-                </div>
+          </div>
           <div className="mt-8 flex justify-center gap-3">
             <ShinyButton>Try free stock analysis</ShinyButton>
             <ShinyButton className="!bg-white/5 !text-zinc-200 !ring-white/10">Get Report</ShinyButton>
-              </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-[-18%] mx-auto h-56 w-[85%] rounded-[40px] bg-[radial-gradient(50%_120%_at_50%_-20%,rgba(255,255,255,0.25),transparent_60%)]" />
-              </div>
-        <div className="mt-10 flex items-center justify-between text-xs text-zinc-500">
-          <span>© {new Date().getFullYear()} Ask Alpha</span>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-zinc-300">Privacy</a>
-            <a href="#" className="hover:text-zinc-300">Terms</a>
           </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-[-18%] mx-auto h-56 w-[85%] rounded-[40px] bg-[radial-gradient(50%_120%_at_50%_-20%,rgba(255,255,255,0.25),transparent_60%)]" />
         </div>
+
       </section>
+      <div className="mt-10 flex text-xs text-zinc-500">
+        <Footer_01 />
+      </div>
     </div>
   );
 }
