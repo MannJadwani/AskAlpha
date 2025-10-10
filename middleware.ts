@@ -28,5 +28,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/company-report','/my-reports','/recommendation','/analytics','/pricing'],
+  matcher: ['/my-reports','/recommendation','/analytics','/pricing','/trade','/portfolio','/charts','/compare'],
 }

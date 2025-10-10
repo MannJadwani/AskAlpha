@@ -38,7 +38,7 @@ interface RecommendationData {
   perplexityAnalysis: PerplexityAnalysis;
   recommendation: Recommendation;
   analysisTimestamp: string;
-  structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[]; revenues_5yr?: { year: string; inr: number }[]; profits_5yr?: { year: string; inr: number }[] } | null;
+  structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[]; revenues_5yr?: { year: string; inr: number }[]; profits_5yr?: { year: string; inr: number }[]; revenue_unit?: string; profit_unit?: string } | null;
 }
 
 export default function RecommendationPage() {
@@ -63,14 +63,22 @@ export default function RecommendationPage() {
 
   const revenuePalette = ['#22c55e', '#06b6d4', '#8b5cf6', '#3b82f6', '#f43f5e'];
   const profitStroke = '#8b5cf6';
-  const renderValueTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number | string }>; label?: string }) => {
+  const renderValueTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number | string; name?: string }>; label?: string }) => {
     if (active && payload && payload.length) {
       const v = payload[0]?.value as number | string;
+      const name = payload[0]?.name as string;
       const num = typeof v === 'string' ? Number(v) : v;
+      
+      // Format with commas and appropriate decimals
+      const formattedValue = new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(Number(num));
+      
       return (
-        <div className="rounded-md border border-border bg-card px-2 py-1.5 text-xs shadow">
-          <div className="font-medium text-foreground">{label}</div>
-          <div className="text-foreground/90">{isNaN(Number(num)) ? String(v) : formatINR(Number(num))}</div>
+        <div className="rounded-md border border-border bg-card px-3 py-2 text-xs shadow-lg">
+          <div className="font-medium text-foreground mb-1">{label}</div>
+          <div className="text-foreground/90 font-semibold">{name}: ₹{formattedValue}</div>
         </div>
       );
     }
@@ -117,6 +125,8 @@ export default function RecommendationPage() {
           { year: String(new Date().getFullYear() - 1), inr: 11800 },
           { year: String(new Date().getFullYear()), inr: 12650 },
         ],
+        revenue_unit: 'Crores',
+        profit_unit: 'Crores',
         kpis: [
           { label: 'Revenue (TTM, INR)', value: '₹1,29,801 Cr' },
           { label: 'Profit Margin', value: '10.4%' },
@@ -287,14 +297,9 @@ export default function RecommendationPage() {
     setCurrentStep('researching');
 
     try {
-      // Update step to structuring after a delay to simulate the research phase
-      setTimeout(() => {
-        if (isAnalyzing) {
-          setCurrentStep('structuring');
-        }
-      }, 3000);
-
-      const response = await fetch('/api/generate-recommendation', {
+      // Step 1: Get company data from Perplexity
+      console.log('Step 1: Fetching company research...');
+      const researchResponse = await fetch('/api/company-research', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -302,13 +307,19 @@ export default function RecommendationPage() {
         body: JSON.stringify({ companyName: companyInput.trim() }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate recommendation');
+      if (!researchResponse.ok) {
+        const errorData = await researchResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch company research');
       }
 
-      const data = await response.json();
-      // Fire secondary request for financials
+      const researchData = await researchResponse.json();
+      console.log('Step 1 complete: Research data received');
+
+      // Step 2: Get revenue and profit charts data
+      console.log('Step 2: Fetching financial data...');
+      setCurrentStep('structuring');
+      
+      let financialData = null;
       try {
         const finRes = await fetch('/api/company-financials', {
           method: 'POST',
@@ -316,16 +327,54 @@ export default function RecommendationPage() {
           body: JSON.stringify({ companyName: companyInput.trim() })
         });
         if (finRes.ok) {
-          const fin = await finRes.json();
-          data.structuredAnalysis = {
-            ...(data.structuredAnalysis || { sections: [] }),
-            revenues_5yr: fin.revenues_5yr,
-            profits_5yr: fin.profits_5yr,
-            kpis: data.structuredAnalysis?.kpis
-          };
+          financialData = await finRes.json();
+          console.log('Step 2 complete: Financial data received');
         }
-      } catch {}
-      setRecommendationData(data);
+      } catch (finErr) {
+        console.warn('Financial data fetch failed, continuing without it:', finErr);
+      }
+
+      // Step 3: Structure both data when generating recommendations
+      console.log('Step 3: Structuring recommendation...');
+      const structureResponse = await fetch('/api/structure-recommendation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          companyName: companyInput.trim(),
+          research: researchData.research,
+          financials: financialData 
+        }),
+      });
+
+      if (!structureResponse.ok) {
+        const errorData = await structureResponse.json();
+        throw new Error(errorData.error || 'Failed to structure recommendation');
+      }
+
+      const structuredData = await structureResponse.json();
+      console.log('Step 3 complete: Recommendation structured');
+
+      // Combine all data for display
+      const combinedData = {
+        perplexityAnalysis: {
+          content: researchData.research,
+          citations: researchData.citations || []
+        },
+        recommendation: structuredData.recommendation,
+        analysisTimestamp: structuredData.timestamp,
+        structuredAnalysis: {
+          ...(structuredData.structuredAnalysis || { sections: [] }),
+          revenues_5yr: financialData?.revenues_5yr,
+          profits_5yr: financialData?.profits_5yr,
+          revenue_unit: financialData?.revenue_unit,
+          profit_unit: financialData?.profit_unit,
+          kpis: structuredData.structuredAnalysis?.kpis
+        }
+      };
+
+      setRecommendationData(combinedData);
       setCurrentStep('complete');
       await updatePlanDetails();
     } catch (err) {
@@ -678,6 +727,22 @@ export default function RecommendationPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-8"
             >
+              {/* Company Name Header */}
+              <div className="text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+                  {companyInput}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Analysis generated on {new Date(recommendationData.analysisTimestamp).toLocaleDateString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
               {/* Recommendation + KPI Row */}
               <div className="rounded-2xl border border-border bg-card overflow-hidden">
                 <div className={`p-8 ${getActionBorderClasses(recommendationData.recommendation.action)}`}>
@@ -796,22 +861,23 @@ export default function RecommendationPage() {
 
               {/* Detailed Analysis */}
               <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
-                {/* Revenue chart if available */}
-                {(recommendationData.structuredAnalysis?.revenues_5yr?.length === 5 || recommendationData.structuredAnalysis?.profits_5yr?.length === 5) && (
+                {/* Revenue and Profit Charts - Commented Out */}
+                {/* {(recommendationData.structuredAnalysis?.revenues_5yr?.length === 5 || recommendationData.structuredAnalysis?.profits_5yr?.length === 5) && (
                   <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Revenue bars */}
                     {recommendationData.structuredAnalysis?.revenues_5yr?.length === 5 && (
                       <div>
-                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Revenue (Last 5 Years)</h3>
+                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">
+                          Revenue (Last 5 Years) {recommendationData.structuredAnalysis?.revenue_unit && `- ₹ in ${recommendationData.structuredAnalysis.revenue_unit}`}
+                        </h3>
                         <div className="h-56 rounded-xl border border-border bg-card/50 p-3">
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={recommendationData.structuredAnalysis.revenues_5yr}>
                               <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                               <XAxis dataKey="year" tick={{ fontSize: 11 }} tickMargin={8} />
-                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${Math.round(v/1000)}k`} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)}`} />
                               <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
                               <RTooltip content={renderValueTooltip as any} />
-                              <Bar dataKey="inr" name="Revenue (INR)" radius={[6,6,0,0]}> 
+                              <Bar dataKey="inr" name={`Revenue (₹ ${recommendationData.structuredAnalysis?.revenue_unit || 'INR'})`} radius={[6,6,0,0]}> 
                                 {recommendationData.structuredAnalysis.revenues_5yr.map((_, i) => (
                                   <Cell key={`c-${i}`} fill={revenuePalette[i % revenuePalette.length]} />
                                 ))}
@@ -821,19 +887,20 @@ export default function RecommendationPage() {
                         </div>
                       </div>
                     )}
-                    {/* Profit line chart */}
                     {recommendationData.structuredAnalysis?.profits_5yr?.length === 5 && (
                       <div>
-                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Profit (Last 5 Years)</h3>
+                        <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">
+                          Profit (Last 5 Years) {recommendationData.structuredAnalysis?.profit_unit && `- ₹ in ${recommendationData.structuredAnalysis.profit_unit}`}
+                        </h3>
                         <div className="h-56 rounded-xl border border-border bg-card/50 p-3">
                           <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart data={recommendationData.structuredAnalysis.profits_5yr}>
                               <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                               <XAxis dataKey="year" tick={{ fontSize: 11 }} tickMargin={8} />
-                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${Math.round(v/1000)}k`} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number): string => `${v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)}`} />
                               <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11 }} />
                               <RTooltip content={renderValueTooltip as any} />
-                              <Area type="monotone" dataKey="inr" name="Profit (INR)" stroke={profitStroke} fill={profitStroke} fillOpacity={0.15} strokeWidth={2} />
+                              <Area type="monotone" dataKey="inr" name={`Profit (₹ ${recommendationData.structuredAnalysis?.profit_unit || 'INR'})`} stroke={profitStroke} fill={profitStroke} fillOpacity={0.15} strokeWidth={2} />
                               <Line type="monotone" dataKey="inr" stroke={profitStroke} strokeWidth={2} dot={{ r: 3 }} />
                             </ComposedChart>
                           </ResponsiveContainer>
@@ -841,7 +908,7 @@ export default function RecommendationPage() {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <h3 className="text-xl font-semibold text-foreground">Detailed Analysis</h3>
                   <button

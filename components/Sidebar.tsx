@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { CurrentUser } from '@/types/auth';
 import { ShinyButton } from '@/components/magicui/shiny-button';
-import { FileText, Sparkles, FolderOpen, Menu, Moon, Sun } from 'lucide-react';
+import { FileText, Sparkles, FolderOpen, Menu, Moon, Sun, Briefcase, BarChart2, GitCompare } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -103,16 +103,25 @@ export default function Sidebar() {
   // Navigation items with their paths and icons
   const navItems = [
     {
-      name: 'AI Recommendations',
+      name: 'Alpha\'s Recommendation',
       path: '/recommendation',
       icon: (<Sparkles className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
     {
-      name: 'Generate Full Reports',
-      path: '/company-report',
-      icon: (<FileText className="h-4 w-4 text-black dark:text-neutral-400" />),
+      name: 'Compare Stocks',
+      path: '/compare',
+      icon: (<GitCompare className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
-    
+    {
+      name: 'Portfolio Analysis',
+      path: '/portfolio',
+      icon: (<Briefcase className="h-4 w-4 text-black dark:text-neutral-400" />),
+    },
+    {
+      name: 'Generate Charts',
+      path: '/charts',
+      icon: (<BarChart2 className="h-4 w-4 text-black dark:text-neutral-400" />),
+    },
     // {
     //   name: 'My Reports',
     //   path: '/my-reports',
