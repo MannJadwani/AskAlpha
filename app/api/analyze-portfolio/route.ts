@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const TIMEOUT_MS = Number(process.env.PORTFOLIO_TIMEOUT_MS || 45000);
+const MAX_TOKENS = Number(process.env.PORTFOLIO_MAX_TOKENS || 2000);
 
 interface PortfolioHolding {
   symbol: string;
@@ -14,10 +16,55 @@ interface PortfolioHolding {
   gainLossPercent?: number;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout?: () => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error('Request timed out'));
+    }, ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
+function safeJsonParse(raw: string | undefined | null): any | null {
+  if (!raw || typeof raw !== 'string') return null;
+  let text = raw.trim();
+  try {
+    text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    return JSON.parse(text);
+  } catch {
+    const arrStart = text.indexOf('[');
+    const arrEnd = text.lastIndexOf(']');
+    if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+      const sliced = text.slice(arrStart, arrEnd + 1);
+      try {
+        return JSON.parse(sliced);
+      } catch {}
+    }
+    const objStart = text.indexOf('{');
+    const objEnd = text.lastIndexOf('}');
+    if (objStart !== -1 && objEnd !== -1 && objEnd > objStart) {
+      const obj = text.slice(objStart, objEnd + 1);
+      try {
+        return JSON.parse(obj);
+      } catch {}
+    }
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
-  if (!OPENAI_API_KEY) {
+  if (!GEMINI_API_KEY) {
     return NextResponse.json(
-      { error: 'OpenAI API key is not configured' },
+      { error: 'Gemini API key is not configured' },
       { status: 500 }
     );
   }
@@ -54,53 +101,38 @@ export async function POST(request: NextRequest) {
 
     console.log('Received portfolio data:', portfolioText.substring(0, 200));
 
-    // Step 1: Parse portfolio holdings using GPT
-    const openai = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-    });
+    // Step 1: Parse portfolio holdings using Gemini
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-    const parsePrompt = `Parse the following portfolio data and extract holdings. The data may be in CSV format or manual entry format.
+    const parsePrompt = `Parse the following portfolio data and extract holdings. The data may be in CSV or free-text manual entry.
 
 Portfolio Data:
 ${portfolioText}
 
-Return a JSON array of holdings with this exact structure:
+Return ONLY a JSON array of holdings with EXACTLY this structure (no markdown):
 [
-  {
-    "symbol": "RELIANCE",
-    "quantity": 100,
-    "avgPrice": 2450.50
-  },
-  ...
+  { "symbol": "RELIANCE", "quantity": 100, "avgPrice": 2450.50 }
 ]
 
 Rules:
-- Extract symbol (stock ticker), quantity (number of shares), and avgPrice (average purchase price)
+- Extract symbol (ticker), quantity (number), and avgPrice (number in INR if Indian, USD if US)
 - Ignore headers if present
-- Handle both comma-separated and whitespace-separated formats
-- Return ONLY valid JSON array, no markdown or extra text`;
+- Handle both comma- and whitespace-separated formats
+- Do not include extra keys; return only the array.`;
 
-    const parseResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a data parser that extracts portfolio holdings from various formats. Return only valid JSON.'
-        },
-        {
-          role: 'user',
-          content: parsePrompt
-        }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.1
-    });
+    const parseResp = await withTimeout(
+      ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: parsePrompt,
+        config: { temperature: 0.1, maxOutputTokens: MAX_TOKENS }
+      }),
+      Math.min(TIMEOUT_MS, 20000)
+    );
 
-    const parsedContent = parseResponse.choices[0].message.content || '{}';
-    let parsedData = JSON.parse(parsedContent);
-    
-    // Handle if response is wrapped in an object
-    let holdings: PortfolioHolding[] = Array.isArray(parsedData) ? parsedData : (parsedData.holdings || []);
+    const parsedData = safeJsonParse(parseResp.text || '') || {};
+    const holdings: PortfolioHolding[] = Array.isArray(parsedData)
+      ? parsedData
+      : Array.isArray((parsedData as any).holdings) ? (parsedData as any).holdings : [];
 
     if (!holdings || holdings.length === 0) {
       return NextResponse.json(
@@ -111,66 +143,71 @@ Rules:
 
     console.log('Parsed holdings:', holdings.length, 'stocks');
 
-    // Step 2: Get current prices using Perplexity
-    if (PERPLEXITY_API_KEY) {
-      try {
-        const symbols = holdings.map(h => h.symbol).join(', ');
-        const pricePrompt = `Get the current stock prices for the following Indian stocks: ${symbols}. 
+    // Step 2: Get current prices using Gemini with Google Search grounding
+    try {
+      const symbols = holdings.map(h => h.symbol).join(', ');
+      const pricePrompt = `Fetch the LATEST current market prices for the following stocks: ${symbols}
 
-Return the data in this exact format for each stock:
-Symbol: SYMBOL
-Current Price: ₹XXXX.XX
+CRITICAL REQUIREMENTS:
+1. For Indian stocks, prefer screener.in and NSE/BSE; for US stocks, use official sources or major aggregators (e.g., Nasdaq, Google Finance).
+2. Use Google Search to retrieve fresh prices.
+3. Return ONLY valid JSON with this exact shape:
+{
+  "prices": [
+    { "symbol": "RELIANCE", "currentPrice": 2580.25, "currency": "INR" }
+  ]
+}`;
 
-Use screener.in or NSE/BSE data. Return current market price in INR.`;
-
-        const priceResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'sonar',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a stock price data provider. Return current market prices from reliable sources.'
-              },
-              {
-                role: 'user',
-                content: pricePrompt
-              }
-            ],
+      async function callPrices(useSearch: boolean) {
+        return await ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: pricePrompt,
+          config: {
+            tools: useSearch ? [{ googleSearch: {} }] : undefined,
             temperature: 0.2,
-            max_tokens: 2000
-          })
-        });
-
-        if (priceResponse.ok) {
-          const priceData = await priceResponse.json();
-          const priceText = priceData.choices[0].message.content;
-          
-          console.log('Price data received:', priceText.substring(0, 200));
-
-          // Parse prices and update holdings
-          for (const holding of holdings) {
-            const regex = new RegExp(`${holding.symbol}.*?(?:Current Price|Price).*?₹?([0-9,]+\\.?[0-9]*)`, 'i');
-            const match = priceText.match(regex);
-            
-            if (match && match[1]) {
-              const price = parseFloat(match[1].replace(/,/g, ''));
-              if (!isNaN(price)) {
-                holding.currentPrice = price;
-                holding.value = holding.quantity * price;
-                holding.gainLoss = holding.value - (holding.quantity * holding.avgPrice);
-                holding.gainLossPercent = (holding.gainLoss / (holding.quantity * holding.avgPrice)) * 100;
-              }
-            }
+            maxOutputTokens: MAX_TOKENS
           }
-        }
-      } catch (err) {
-        console.warn('Failed to fetch current prices:', err);
+        });
       }
+
+      let priceResp;
+      try {
+        priceResp = await withTimeout(
+          callPrices(true),
+          Math.min(TIMEOUT_MS, 30000),
+          () => console.warn('Gemini price fetch (with search) timed out')
+        );
+      } catch (firstErr) {
+        console.warn('Gemini price fetch failed (with search), retrying without tools:', firstErr);
+        priceResp = await withTimeout(
+          callPrices(false),
+          Math.min(TIMEOUT_MS, 20000)
+        );
+      }
+
+      const pricesJson = safeJsonParse(priceResp.text || '') || {};
+      const pricesArr: Array<{ symbol: string; currentPrice: number; currency?: string }> = pricesJson.prices || [];
+
+      const symbolToPrice = new Map<string, { currentPrice: number; currency?: string }>();
+      for (const p of pricesArr) {
+        if (p && typeof p.symbol === 'string' && typeof p.currentPrice === 'number') {
+          symbolToPrice.set(p.symbol.toUpperCase().trim(), { currentPrice: p.currentPrice, currency: p.currency });
+        }
+      }
+
+      for (const holding of holdings) {
+        const key = holding.symbol.toUpperCase().trim();
+        const entry = symbolToPrice.get(key);
+        if (entry && typeof entry.currentPrice === 'number') {
+          const price = entry.currentPrice;
+          holding.currentPrice = price;
+          holding.value = holding.quantity * price;
+          holding.gainLoss = holding.value - (holding.quantity * holding.avgPrice);
+          holding.gainLossPercent = (holding.gainLoss / (holding.quantity * holding.avgPrice)) * 100;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch current prices via Gemini:', err);
     }
 
     // Calculate totals
@@ -179,53 +216,35 @@ Use screener.in or NSE/BSE data. Return current market price in INR.`;
     const totalGainLoss = totalValue - totalInvestment;
     const totalGainLossPercent = (totalGainLoss / totalInvestment) * 100;
 
-    // Step 3: Generate AI insights
-    const insightsPrompt = `Analyze this investment portfolio and provide insights:
+    // Step 3: Generate AI insights using Gemini
+    const insightsPrompt = `Analyze this investment portfolio and provide insights.
 
-Portfolio Holdings:
-${JSON.stringify(holdings, null, 2)}
+Portfolio Holdings JSON:
+${JSON.stringify(holdings)}
 
-Total Investment: ₹${totalInvestment.toFixed(2)}
-Current Value: ₹${totalValue.toFixed(2)}
-Total Gain/Loss: ₹${totalGainLoss.toFixed(2)} (${totalGainLossPercent.toFixed(2)}%)
+Totals (INR where applicable):
+Total Investment: ${totalInvestment.toFixed(2)}
+Current Value: ${totalValue.toFixed(2)}
+Total Gain/Loss: ${totalGainLoss.toFixed(2)} (${totalGainLossPercent.toFixed(2)}%)
 
-Provide:
-1. A brief 2-3 sentence analysis of the portfolio performance and composition
-2. Risk assessment score (0-100, where 0 is very low risk and 100 is very high risk)
-3. 3-5 specific, actionable recommendations for improving the portfolio
-
-Consider:
-- Diversification across sectors
-- Risk exposure
-- Performance of individual holdings
-- Market conditions
-- Portfolio balance
-
-Return in this JSON format:
+Provide ONLY valid JSON with this exact structure (no markdown):
 {
-  "insights": "Brief analysis...",
+  "insights": "Brief 2-3 sentence analysis",
   "riskScore": 45,
-  "recommendations": ["Recommendation 1", "Recommendation 2", ...]
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "diversification": [{ "sector": "IT", "allocation": 35 }]
 }`;
 
-    const insightsResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert portfolio analyst providing actionable insights for retail investors in India.'
-        },
-        {
-          role: 'user',
-          content: insightsPrompt
-        }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7
-    });
+    const insightsResp = await withTimeout(
+      ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: insightsPrompt,
+        config: { temperature: 0.4, maxOutputTokens: MAX_TOKENS }
+      }),
+      Math.min(TIMEOUT_MS, 20000)
+    );
 
-    const insightsContent = insightsResponse.choices[0].message.content || '{}';
-    const insightsData = JSON.parse(insightsContent);
+    const insightsData = safeJsonParse(insightsResp.text || '{}') || {};
 
     const response = {
       holdings,
@@ -234,9 +253,9 @@ Return in this JSON format:
       totalGainLoss,
       totalGainLossPercent,
       insights: insightsData.insights || 'Analysis complete.',
-      recommendations: insightsData.recommendations || [],
-      diversification: insightsData.diversification || [],
-      riskScore: insightsData.riskScore || 50,
+      recommendations: Array.isArray(insightsData.recommendations) ? insightsData.recommendations : [],
+      diversification: Array.isArray(insightsData.diversification) ? insightsData.diversification : [],
+      riskScore: typeof insightsData.riskScore === 'number' ? insightsData.riskScore : 50,
       timestamp: new Date().toISOString()
     };
 
