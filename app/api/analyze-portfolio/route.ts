@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const TIMEOUT_MS = Number(process.env.PORTFOLIO_TIMEOUT_MS || 45000);
 const MAX_TOKENS = Number(process.env.PORTFOLIO_MAX_TOKENS || 2000);
 
@@ -216,7 +216,83 @@ CRITICAL REQUIREMENTS:
     const totalGainLoss = totalValue - totalInvestment;
     const totalGainLossPercent = (totalGainLoss / totalInvestment) * 100;
 
-    // Step 3: Generate AI insights using Gemini
+    // Step 3: Per-company research and advice using Gemini with Google Search grounding
+    const companyAdvice: Array<any> = [];
+    for (const h of holdings) {
+      const advicePrompt = `Research the company for stock symbol: ${h.symbol}
+
+If Indian, prefer screener.in (PRIMARY source) and NSE/BSE; otherwise use official sources/major aggregators. Use Google Search for latest data.
+
+Portfolio context:
+- Quantity: ${h.quantity}
+- Avg Buy Price: ${h.avgPrice}
+- Current Price: ${typeof h.currentPrice === 'number' ? h.currentPrice : 'N/A'}
+- Gain/Loss %: ${typeof h.gainLossPercent === 'number' ? h.gainLossPercent.toFixed(2) : 'N/A'}
+
+Return ONLY valid JSON with this exact shape (no markdown):
+{
+  "symbol": "${h.symbol}",
+  "name": "Full Company Name",
+  "sector": "Sector name",
+  "action": "BUY|ADD|HOLD|TRIM|SELL",
+  "confidence": 0-100,
+  "summary": "2-3 sentence summary of outlook",
+  "rationale": ["Why action 1", "Why action 2", "Why action 3"],
+  "targetPrice": 0,
+  "timeHorizon": "3-6 months or 12-18 months",
+  "risks": ["Risk 1", "Risk 2"]
+}`;
+
+      async function callAdvice(useSearch: boolean) {
+        return await ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: advicePrompt,
+          config: {
+            tools: useSearch ? [{ googleSearch: {} }] : undefined,
+            temperature: 0.2,
+            maxOutputTokens: MAX_TOKENS
+          }
+        });
+      }
+
+      try {
+        let adviceResp;
+        try {
+          adviceResp = await withTimeout(
+            callAdvice(true),
+            Math.min(TIMEOUT_MS, 25000),
+            () => console.warn(`Gemini advice (with search) timed out for ${h.symbol}`)
+          );
+        } catch (firstErr) {
+          console.warn(`Gemini advice failed (with search) for ${h.symbol}, retrying without tools:`, firstErr);
+          adviceResp = await withTimeout(
+            callAdvice(false),
+            Math.min(TIMEOUT_MS, 20000)
+          );
+        }
+
+        const adviceJson = safeJsonParse(adviceResp.text || '{}') || {};
+        // minimal sanitation
+        const sanitized = {
+          symbol: String(adviceJson.symbol ?? h.symbol),
+          name: adviceJson.name ?? '',
+          sector: adviceJson.sector ?? '',
+          action: String((adviceJson.action || 'HOLD')).toUpperCase(),
+          confidence: typeof adviceJson.confidence === 'number' ? adviceJson.confidence : 50,
+          summary: adviceJson.summary ?? '',
+          rationale: Array.isArray(adviceJson.rationale) ? adviceJson.rationale.slice(0, 5) : [],
+          targetPrice: typeof adviceJson.targetPrice === 'number' ? adviceJson.targetPrice : undefined,
+          timeHorizon: adviceJson.timeHorizon ?? '',
+          risks: Array.isArray(adviceJson.risks) ? adviceJson.risks.slice(0, 5) : []
+        };
+        companyAdvice.push(sanitized);
+      } catch (err) {
+        console.warn('Advice generation failed for', h.symbol, err);
+        companyAdvice.push({ symbol: h.symbol, action: 'HOLD', confidence: 50, summary: 'Advice unavailable right now.' });
+      }
+    }
+
+    // Step 4: Generate overall AI insights using Gemini
     const insightsPrompt = `Analyze this investment portfolio and provide insights.
 
 Portfolio Holdings JSON:
@@ -252,6 +328,7 @@ Provide ONLY valid JSON with this exact structure (no markdown):
       totalInvestment,
       totalGainLoss,
       totalGainLossPercent,
+      companyAdvice,
       insights: insightsData.insights || 'Analysis complete.',
       recommendations: Array.isArray(insightsData.recommendations) ? insightsData.recommendations : [],
       diversification: Array.isArray(insightsData.diversification) ? insightsData.diversification : [],

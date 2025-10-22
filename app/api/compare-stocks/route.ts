@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const TIMEOUT_MS = Number(process.env.COMPARE_TIMEOUT_MS || 45000);
 const MAX_TOKENS = Number(process.env.COMPARE_MAX_TOKENS || 2500);
 

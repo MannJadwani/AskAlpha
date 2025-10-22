@@ -6,7 +6,7 @@ The Compare Stocks feature allows users to compare 2-4 companies side-by-side wi
 
 ## Technology Stack
 
-- **AI Model**: Gemini 2.0 Flash Experimental (`gemini-2.0-flash-exp`)
+- **AI Model**: Gemini 2.0 Flash Experimental (`gemini-2.5-flash`)
 - **Data Source**: Google Search (real-time web data via grounding)
 - **SDK**: `@google/genai` (official Google Gen AI JavaScript SDK)
 - **Documentation**: Retrieved via Context7 MCP
@@ -75,7 +75,7 @@ Beautiful UI Comparison
 ```typescript
 // Gemini API call with Google Search grounding
 const response = await ai.models.generateContent({
-  model: 'gemini-2.0-flash-exp',
+  model: 'gemini-2.5-flash',
   contents: comparisonPrompt,
   config: {
     tools: [{ googleSearch: {} }], // Enable Google Search grounding

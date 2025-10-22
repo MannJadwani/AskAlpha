@@ -5,7 +5,6 @@ import { ShinyButton } from '@/components/magicui/shiny-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, TrendingUp, AlertCircle, Download, Trash2, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
-import ComingSoon from '@/components/ui/coming-soon';
 
 interface PortfolioHolding {
   symbol: string;
@@ -31,6 +30,18 @@ interface PortfolioAnalysis {
   }[];
   riskScore: number;
   timestamp: string;
+  companyAdvice?: Array<{
+    symbol: string;
+    name?: string;
+    sector?: string;
+    action?: 'BUY' | 'ADD' | 'HOLD' | 'TRIM' | 'SELL' | string;
+    confidence?: number;
+    summary?: string;
+    rationale?: string[];
+    targetPrice?: number;
+    timeHorizon?: string;
+    risks?: string[];
+  }>;
 }
 
 export default function PortfolioAnalysisPage() {
@@ -155,8 +166,7 @@ export default function PortfolioAnalysisPage() {
   };
 
   return (
-<ComingSoon>
-<div className="items-center justify-center w-full flex flex-col">
+    <div className="items-center justify-center w-full flex flex-col">
       <div className="mx-auto max-w-7xl px-6 py-12">
         {/* Header */}
         <div className="text-center mb-12">
@@ -344,7 +354,7 @@ export default function PortfolioAnalysisPage() {
                 {isAnalyzing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Analyzing Portfolio...
+                    Analyzing with Gemini AI...
                   </>
                 ) : (
                   <>
@@ -450,6 +460,65 @@ export default function PortfolioAnalysisPage() {
                 </div>
               </div>
 
+              {/* Per-Company Advice */}
+              {Array.isArray(analysis.companyAdvice) && analysis.companyAdvice.length > 0 && (
+                <div className="rounded-2xl border border-border bg-card p-8">
+                  <h2 className="text-xl font-semibold text-foreground mb-6">Per-Company Advice</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {analysis.companyAdvice.map((advice, idx) => (
+                      <div key={idx} className="rounded-xl border border-border bg-muted/40 p-5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <div className="text-sm font-semibold text-foreground">{advice.name || advice.symbol}</div>
+                            <div className="text-xs text-muted-foreground">{advice.sector || advice.symbol}</div>
+                          </div>
+                          {advice.action && (
+                            <span className={`px-2 py-1 rounded text-xs border ${
+                              advice.action === 'BUY' || advice.action === 'ADD' ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' :
+                              advice.action === 'SELL' || advice.action === 'TRIM' ? 'text-red-300 border-red-500/30 bg-red-500/10' :
+                              'text-yellow-300 border-yellow-500/30 bg-yellow-500/10'
+                            }`}>
+                              {advice.action}
+                            </span>
+                          )}
+                        </div>
+                        {typeof advice.confidence === 'number' && (
+                          <div className="text-xs text-muted-foreground mb-2">Confidence: {advice.confidence}/100</div>
+                        )}
+                        {advice.summary && (
+                          <p className="text-sm text-foreground/90 mb-3">{advice.summary}</p>
+                        )}
+                        {Array.isArray(advice.rationale) && advice.rationale.length > 0 && (
+                          <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+                            {advice.rationale.slice(0, 4).map((r, i) => (
+                              <li key={i}>{r}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-2">
+                          {typeof advice.targetPrice === 'number' && (
+                            <span className="px-2 py-1 rounded border border-border bg-background/50">Target: ₹{advice.targetPrice}</span>
+                          )}
+                          {advice.timeHorizon && (
+                            <span className="px-2 py-1 rounded border border-border bg-background/50">Horizon: {advice.timeHorizon}</span>
+                          )}
+                        </div>
+                        {Array.isArray(advice.risks) && advice.risks.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-xs font-medium text-foreground mb-1">Key Risks</div>
+                            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                              {advice.risks.slice(0, 3).map((r, i) => (
+                                <li key={i}>{r}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Recommendations */}
               {analysis.recommendations.length > 0 && (
                 <div className="rounded-2xl border border-border bg-card p-8">
@@ -481,7 +550,6 @@ export default function PortfolioAnalysisPage() {
         )}
       </div>
     </div>
-</ComingSoon>
   );
 }
 

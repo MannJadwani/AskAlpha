@@ -277,7 +277,7 @@ export default function AskAlphaLanding() {
           <img 
             src="/assets/logo/logo.png" 
             alt="Ask Alpha" 
-            className="h-10 w-auto transition-all duration-300 hover:scale-105"
+            className="h-12 sm:h-14 md:h-16 w-auto transition-all duration-300 hover:scale-105"
           />
         </motion.div>
         <div className="relative w-full rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3">
