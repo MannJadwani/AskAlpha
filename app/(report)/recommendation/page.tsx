@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShinyButton } from '@/components/magicui/shiny-button';
 import { useAuth } from '../../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -60,6 +60,11 @@ export default function RecommendationPage() {
   const [showDetailed, setShowDetailed] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
   const [highlightAsk, setHighlightAsk] = useState(false);
+
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string; exchange: string; label: string }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const revenuePalette = ['#22c55e', '#06b6d4', '#8b5cf6', '#3b82f6', '#f43f5e'];
   const profitStroke = '#8b5cf6';
@@ -285,6 +290,36 @@ export default function RecommendationPage() {
       renderContent();
     }
   }, [recommendationData]);
+
+  // Autocomplete effect for stock search
+  useEffect(() => {
+    if (mode !== 'stock') {
+      setSuggestions([]);
+      return;
+    }
+    const q = companyInput.trim();
+    if (!q || q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    setIsSearching(true);
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    const doFetch = async () => {
+      try {
+        const res = await fetch(`/api/instruments/search?q=${encodeURIComponent(q)}&limit=15`, { signal: controller.signal });
+        const data = await res.json();
+        setSuggestions(Array.isArray(data.items) ? data.items : []);
+      } catch {}
+      setIsSearching(false);
+    };
+    const t = setTimeout(doFetch, 200);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [companyInput, mode]);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -596,7 +631,7 @@ export default function RecommendationPage() {
             className={`rounded-2xl border border-border bg-card backdrop-blur p-8 shadow-2xl ${Number(creditsData) === 0 ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <form id="recommendation-form" onSubmit={handleAnalyze} className="space-y-6">
-                <div>
+                <div className="relative">
                   <label htmlFor="company" className="block text-sm font-semibold text-foreground mb-3">
                     Company Name or Ticker Symbol
                   </label>
@@ -605,10 +640,30 @@ export default function RecommendationPage() {
                     type="text"
                     value={companyInput}
                     onChange={(e) => setCompanyInput(e.target.value)}
-                    placeholder="e.g., Apple, AAPL, Tesla, TSLA"
+                    placeholder="e.g., Apple, AAPL, Tesla, TSLA, INFY, RELIANCE"
                     className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg"
                     disabled={isAnalyzing || Number(creditsData) === 0}
                   />
+                  {suggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-card shadow-xl">
+                      {suggestions.map((s, idx) => (
+                        <button
+                          type="button"
+                          key={`${s.symbol}-${s.exchange}-${idx}`}
+                          onClick={() => {
+                            setCompanyInput(s.symbol);
+                            setSuggestions([]);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-border last:border-0 transition-colors"
+                        >
+                          <div className="font-medium text-foreground">{s.symbol}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {s.name || s.exchange} ({s.exchange})
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {error && (

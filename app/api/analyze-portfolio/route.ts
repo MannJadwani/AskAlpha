@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
 const TIMEOUT_MS = Number(process.env.PORTFOLIO_TIMEOUT_MS || 45000);
 const MAX_TOKENS = Number(process.env.PORTFOLIO_MAX_TOKENS || 2000);
 
@@ -62,9 +61,9 @@ function safeJsonParse(raw: string | undefined | null): any | null {
 }
 
 export async function POST(request: NextRequest) {
-  if (!GEMINI_API_KEY) {
+  if (!PERPLEXITY_API_KEY) {
     return NextResponse.json(
-      { error: 'Gemini API key is not configured' },
+      { error: 'Perplexity API key is not configured' },
       { status: 500 }
     );
   }
@@ -101,8 +100,36 @@ export async function POST(request: NextRequest) {
 
     console.log('Received portfolio data:', portfolioText.substring(0, 200));
 
-    // Step 1: Parse portfolio holdings using Gemini
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    // Perplexity call helper
+    async function callPerplexity(prompt: string, temperature: number, maxTokens: number) {
+      const res = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: PERPLEXITY_MODEL,
+          messages: [
+            { role: 'system', content: 'You are a precise financial research assistant. When asked to output JSON, return ONLY valid JSON without markdown fences.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature,
+          max_tokens: maxTokens,
+          return_citations: true
+        })
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Perplexity API error: ${res.status} ${errText}`);
+      }
+      const data = await res.json();
+      const content: string = data?.choices?.[0]?.message?.content || '';
+      const citations = data?.citations || [];
+      return { content, citations };
+    }
+
+    // Step 1: Parse portfolio holdings using Perplexity
 
     const parsePrompt = `Parse the following portfolio data and extract holdings. The data may be in CSV or free-text manual entry.
 
@@ -121,15 +148,11 @@ Rules:
 - Do not include extra keys; return only the array.`;
 
     const parseResp = await withTimeout(
-      ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: parsePrompt,
-        config: { temperature: 0.1, maxOutputTokens: MAX_TOKENS }
-      }),
+      callPerplexity(parsePrompt, 0.1, MAX_TOKENS),
       Math.min(TIMEOUT_MS, 20000)
     );
 
-    const parsedData = safeJsonParse(parseResp.text || '') || {};
+    const parsedData = safeJsonParse(parseResp.content || '') || {};
     const holdings: PortfolioHolding[] = Array.isArray(parsedData)
       ? parsedData
       : Array.isArray((parsedData as any).holdings) ? (parsedData as any).holdings : [];
@@ -143,14 +166,14 @@ Rules:
 
     console.log('Parsed holdings:', holdings.length, 'stocks');
 
-    // Step 2: Get current prices using Gemini with Google Search grounding
+    // Step 2: Get current prices using Perplexity (with browsing)
     try {
       const symbols = holdings.map(h => h.symbol).join(', ');
       const pricePrompt = `Fetch the LATEST current market prices for the following stocks: ${symbols}
 
 CRITICAL REQUIREMENTS:
 1. For Indian stocks, prefer screener.in and NSE/BSE; for US stocks, use official sources or major aggregators (e.g., Nasdaq, Google Finance).
-2. Use Google Search to retrieve fresh prices.
+2. Use live web browsing to retrieve fresh prices with sources.
 3. Return ONLY valid JSON with this exact shape:
 {
   "prices": [
@@ -158,34 +181,13 @@ CRITICAL REQUIREMENTS:
   ]
 }`;
 
-      async function callPrices(useSearch: boolean) {
-        return await ai.models.generateContent({
-          model: GEMINI_MODEL,
-          contents: pricePrompt,
-          config: {
-            tools: useSearch ? [{ googleSearch: {} }] : undefined,
-            temperature: 0.2,
-            maxOutputTokens: MAX_TOKENS
-          }
-        });
-      }
-
-      let priceResp;
-      try {
-        priceResp = await withTimeout(
-          callPrices(true),
+      const priceResp = await withTimeout(
+        callPerplexity(pricePrompt, 1, MAX_TOKENS),
           Math.min(TIMEOUT_MS, 30000),
-          () => console.warn('Gemini price fetch (with search) timed out')
+        () => console.warn('Perplexity price fetch timed out')
         );
-      } catch (firstErr) {
-        console.warn('Gemini price fetch failed (with search), retrying without tools:', firstErr);
-        priceResp = await withTimeout(
-          callPrices(false),
-          Math.min(TIMEOUT_MS, 20000)
-        );
-      }
 
-      const pricesJson = safeJsonParse(priceResp.text || '') || {};
+      const pricesJson = safeJsonParse(priceResp.content || '') || {};
       const pricesArr: Array<{ symbol: string; currentPrice: number; currency?: string }> = pricesJson.prices || [];
 
       const symbolToPrice = new Map<string, { currentPrice: number; currency?: string }>();
@@ -207,7 +209,7 @@ CRITICAL REQUIREMENTS:
         }
       }
     } catch (err) {
-      console.warn('Failed to fetch current prices via Gemini:', err);
+      console.warn('Failed to fetch current prices via Perplexity:', err);
     }
 
     // Calculate totals
@@ -216,12 +218,12 @@ CRITICAL REQUIREMENTS:
     const totalGainLoss = totalValue - totalInvestment;
     const totalGainLossPercent = (totalGainLoss / totalInvestment) * 100;
 
-    // Step 3: Per-company research and advice using Gemini with Google Search grounding
+    // Step 3: Per-company research and advice using Perplexity (with browsing)
     const companyAdvice: Array<any> = [];
     for (const h of holdings) {
       const advicePrompt = `Research the company for stock symbol: ${h.symbol}
 
-If Indian, prefer screener.in (PRIMARY source) and NSE/BSE; otherwise use official sources/major aggregators. Use Google Search for latest data.
+If Indian, prefer screener.in (PRIMARY source) and NSE/BSE; otherwise use official sources/major aggregators. Use live web browsing for latest data.
 
 Portfolio context:
 - Quantity: ${h.quantity}
@@ -242,36 +244,14 @@ Return ONLY valid JSON with this exact shape (no markdown):
   "timeHorizon": "3-6 months or 12-18 months",
   "risks": ["Risk 1", "Risk 2"]
 }`;
-
-      async function callAdvice(useSearch: boolean) {
-        return await ai.models.generateContent({
-          model: GEMINI_MODEL,
-          contents: advicePrompt,
-          config: {
-            tools: useSearch ? [{ googleSearch: {} }] : undefined,
-            temperature: 0.2,
-            maxOutputTokens: MAX_TOKENS
-          }
-        });
-      }
-
       try {
-        let adviceResp;
-        try {
-          adviceResp = await withTimeout(
-            callAdvice(true),
+        const adviceResp = await withTimeout(
+          callPerplexity(advicePrompt, 0.2, MAX_TOKENS),
             Math.min(TIMEOUT_MS, 25000),
-            () => console.warn(`Gemini advice (with search) timed out for ${h.symbol}`)
+          () => console.warn(`Perplexity advice timed out for ${h.symbol}`)
           );
-        } catch (firstErr) {
-          console.warn(`Gemini advice failed (with search) for ${h.symbol}, retrying without tools:`, firstErr);
-          adviceResp = await withTimeout(
-            callAdvice(false),
-            Math.min(TIMEOUT_MS, 20000)
-          );
-        }
 
-        const adviceJson = safeJsonParse(adviceResp.text || '{}') || {};
+        const adviceJson = safeJsonParse(adviceResp.content || '{}') || {};
         // minimal sanitation
         const sanitized = {
           symbol: String(adviceJson.symbol ?? h.symbol),
@@ -292,7 +272,7 @@ Return ONLY valid JSON with this exact shape (no markdown):
       }
     }
 
-    // Step 4: Generate overall AI insights using Gemini
+    // Step 4: Generate overall AI insights using Perplexity
     const insightsPrompt = `Analyze this investment portfolio and provide insights.
 
 Portfolio Holdings JSON:
@@ -312,15 +292,11 @@ Provide ONLY valid JSON with this exact structure (no markdown):
 }`;
 
     const insightsResp = await withTimeout(
-      ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: insightsPrompt,
-        config: { temperature: 0.4, maxOutputTokens: MAX_TOKENS }
-      }),
+      callPerplexity(insightsPrompt, 0.4, MAX_TOKENS),
       Math.min(TIMEOUT_MS, 20000)
     );
 
-    const insightsData = safeJsonParse(insightsResp.text || '{}') || {};
+    const insightsData = safeJsonParse(insightsResp.content || '{}') || {};
 
     const response = {
       holdings,

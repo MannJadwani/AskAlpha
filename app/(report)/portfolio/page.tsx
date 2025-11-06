@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShinyButton } from '@/components/magicui/shiny-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, TrendingUp, AlertCircle, Download, Trash2, BarChart3 } from 'lucide-react';
@@ -50,8 +50,58 @@ export default function PortfolioAnalysisPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [uploadMethod, setUploadMethod] = useState<'file' | 'manual'>('file');
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'manual'>('manual');
   const [manualInput, setManualInput] = useState('');
+
+  // One-by-one form state
+  const [symbolQuery, setSymbolQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Array<{ symbol: string; name: string; exchange: string; label: string }>>([]);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('');
+  const [quantity, setQuantity] = useState<string>('');
+  const [avgPrice, setAvgPrice] = useState<string>('');
+  const [holdingsForm, setHoldingsForm] = useState<PortfolioHolding[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const q = symbolQuery.trim();
+    if (!q) { setSuggestions([]); return; }
+    setIsSearching(true);
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    const doFetch = async () => {
+      try {
+        const res = await fetch(`/api/instruments/search?q=${encodeURIComponent(q)}&limit=15`, { signal: controller.signal });
+        const data = await res.json();
+        setSuggestions(Array.isArray(data.items) ? data.items : []);
+      } catch {}
+      setIsSearching(false);
+    };
+    const t = setTimeout(doFetch, 200);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [symbolQuery]);
+
+  const addHolding = () => {
+    const symbol = (selectedSymbol || symbolQuery).trim().toUpperCase();
+    const q = Number(quantity);
+    const p = Number(avgPrice);
+    if (!symbol || !q || !p || isNaN(q) || isNaN(p)) {
+      setError('Please provide a valid symbol, quantity, and average price');
+      return;
+    }
+    setHoldingsForm((prev) => [...prev, { symbol, quantity: q, avgPrice: p }]);
+    setSelectedSymbol('');
+    setSymbolQuery('');
+    setQuantity('');
+    setAvgPrice('');
+    setSuggestions([]);
+    setError(null);
+  };
+
+  const removeHolding = (idx: number) => {
+    setHoldingsForm((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -98,8 +148,8 @@ export default function PortfolioAnalysisPage() {
       return;
     }
 
-    if (!manualInput.trim() && uploadMethod === 'manual') {
-      setError('Please enter your portfolio data');
+    if (uploadMethod === 'manual' && holdingsForm.length === 0 && !manualInput.trim()) {
+      setError('Please add at least one holding or paste manual data');
       return;
     }
 
@@ -113,7 +163,10 @@ export default function PortfolioAnalysisPage() {
         formData.append('file', file);
         formData.append('method', 'file');
       } else {
-        formData.append('portfolioData', manualInput);
+        const manualText = holdingsForm.length
+          ? holdingsForm.map(h => `${h.symbol} ${h.quantity} ${h.avgPrice}`).join('\n')
+          : manualInput;
+        formData.append('portfolioData', manualText);
         formData.append('method', 'manual');
       }
 
@@ -310,23 +363,119 @@ export default function PortfolioAnalysisPage() {
               </>
             ) : (
               <>
-                {/* Manual Entry */}
+                {/* Manual Entry Form (one-by-one with autocomplete) */}
                 <div className="space-y-4">
-                  <label htmlFor="manual-portfolio" className="block text-sm font-semibold text-foreground">
-                    Enter your portfolio data (one holding per line)
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                    <div className="md:col-span-5 relative">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Symbol</label>
+                      <input
+                        value={symbolQuery}
+                        onChange={(e) => { setSymbolQuery(e.target.value); setSelectedSymbol(''); }}
+                        placeholder="Type to search (e.g., INFY, RELIANCE, TCS)"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder:text-muted-foreground text-sm"
+                        disabled={Number(creditsData) === 0}
+                      />
+                      {suggestions.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-border bg-card shadow-xl">
+                          {suggestions.map((s, idx) => (
+                            <button
+                              type="button"
+                              key={`${s.symbol}-${s.exchange}-${idx}`}
+                              onClick={() => { setSelectedSymbol(s.symbol); setSymbolQuery(s.symbol); setSuggestions([]); }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-white/5"
+                            >
+                              <span className="font-medium">{s.symbol}</span>
+                              <span className="text-muted-foreground"> — {s.name || s.exchange} ({s.exchange})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Quantity</label>
+                      <input
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        type="number"
+                        min="1"
+                        placeholder="e.g., 100"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder:text-muted-foreground text-sm"
+                        disabled={Number(creditsData) === 0}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Avg Price</label>
+                      <input
+                        value={avgPrice}
+                        onChange={(e) => setAvgPrice(e.target.value)}
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g., 2450.50"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder:text-muted-foreground text-sm"
+                        disabled={Number(creditsData) === 0}
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <ShinyButton
+                        onClick={addHolding}
+                        className="w-full justify-center !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
+                        disabled={Number(creditsData) === 0}
+                      >
+                        Add
+                      </ShinyButton>
+                    </div>
+                  </div>
+
+                  {holdingsForm.length > 0 && (
+                    <div className="rounded-xl border border-border bg-muted/30 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-semibold text-foreground">Holdings</div>
+                        <div className="text-xs text-muted-foreground">{holdingsForm.length} added</div>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border">
+                              <th className="text-left py-2 px-2 text-muted-foreground">Symbol</th>
+                              <th className="text-right py-2 px-2 text-muted-foreground">Qty</th>
+                              <th className="text-right py-2 px-2 text-muted-foreground">Avg Price</th>
+                              <th className="text-right py-2 px-2 text-muted-foreground"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {holdingsForm.map((h, idx) => (
+                              <tr key={`${h.symbol}-${idx}`} className="border-b border-border last:border-0">
+                                <td className="py-2 px-2 font-medium text-foreground">{h.symbol}</td>
+                                <td className="py-2 px-2 text-right text-foreground">{h.quantity}</td>
+                                <td className="py-2 px-2 text-right text-foreground">{h.avgPrice}</td>
+                                <td className="py-2 px-2 text-right">
+                                  <button onClick={() => removeHolding(idx)} className="text-red-500 hover:text-red-600">
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Optional raw manual input */}
+                  <div className="space-y-2">
+                    <label htmlFor="manual-portfolio" className="block text-xs font-medium text-muted-foreground">
+                      Or paste your portfolio (one per line)
                   </label>
                   <textarea
                     id="manual-portfolio"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="RELIANCE, 100, 2450.50&#10;TCS, 50, 3200.00&#10;INFY, 75, 1450.25"
-                    rows={10}
-                    className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground font-mono text-sm"
+                      placeholder="RELIANCE 100 2450.50\nTCS 50 3200.00\nINFY 75 1450.25"
+                      rows={6}
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground font-mono text-xs"
                     disabled={Number(creditsData) === 0}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Format: Symbol, Quantity, Average Price, Current Price (optional)
-                  </p>
+                  </div>
                 </div>
               </>
             )}
@@ -348,7 +497,7 @@ export default function PortfolioAnalysisPage() {
             <div className="mt-8">
               <ShinyButton
                 onClick={handleAnalyze}
-                disabled={isAnalyzing || (!file && !manualInput.trim()) || Number(creditsData) === 0}
+                disabled={isAnalyzing || (uploadMethod === 'file' ? !file : holdingsForm.length === 0 && !manualInput.trim()) || Number(creditsData) === 0}
                 className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
               >
                 {isAnalyzing ? (

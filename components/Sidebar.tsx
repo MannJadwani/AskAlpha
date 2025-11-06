@@ -117,11 +117,12 @@ export default function Sidebar() {
       path: '/portfolio',
       icon: (<Briefcase className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
-    {
-      name: 'Generate Charts',
-      path: '/charts',
-      icon: (<BarChart2 className="h-4 w-4 text-black dark:text-neutral-400" />),
-    },
+  
+		{
+			name: 'Generate Charts',
+			path: '/charts',
+			icon: (<BarChart2 className="h-4 w-4 text-black dark:text-neutral-400" />),
+		},
     // {
     //   name: 'My Reports',
     //   path: '/my-reports',

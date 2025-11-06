@@ -52,6 +52,8 @@ export default function MyReports() {
     }, 100);
   };
 
+
+
   return (
     <div className="min-h-screen bg-[#0a0c10] text-zinc-300 w-full">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -108,3 +110,5 @@ export default function MyReports() {
     </div>
   );
 }
+
+

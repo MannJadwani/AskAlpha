@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShinyButton } from '@/components/magicui/shiny-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, BarChart3, AlertCircle, Loader2, Plus, X, Gauge, Target, Trophy, Info } from 'lucide-react';
@@ -53,6 +53,11 @@ export default function CompareStocksPage() {
   const [benchmarkIndex, setBenchmarkIndex] = useState<number | null>(null);
   const [preset, setPreset] = useState<'balanced' | 'growth' | 'value'>('balanced');
 
+  // Autocomplete state (per input index)
+  const [suggestions, setSuggestions] = useState<Record<number, Array<{ symbol: string; name: string; exchange: string; label: string }>>>({});
+  const [activeInputIndex, setActiveInputIndex] = useState<number | null>(null);
+  const searchAbortRefs = useRef<Record<number, AbortController>>({});
+
   // Preset comparisons for fast starts
   const presets: string[][] = [
     ['Reliance Industries', 'TCS', 'Infosys'],
@@ -69,6 +74,22 @@ export default function CompareStocksPage() {
   const removeCompanyInput = (index: number) => {
     if (companyInputs.length > 2) {
       setCompanyInputs(companyInputs.filter((_, i) => i !== index));
+      setSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[index];
+        // Reindex remaining suggestions
+        const reindexed: Record<number, Array<{ symbol: string; name: string; exchange: string; label: string }>> = {};
+        Object.keys(next).forEach((k) => {
+          const oldIdx = Number(k);
+          if (oldIdx > index) {
+            reindexed[oldIdx - 1] = next[oldIdx];
+          } else if (oldIdx < index) {
+            reindexed[oldIdx] = next[oldIdx];
+          }
+        });
+        return reindexed;
+      });
+      if (activeInputIndex === index) setActiveInputIndex(null);
     }
   };
 
@@ -76,7 +97,40 @@ export default function CompareStocksPage() {
     const newInputs = [...companyInputs];
     newInputs[index] = value;
     setCompanyInputs(newInputs);
+    setActiveInputIndex(index);
   };
+
+  // Autocomplete effect
+  useEffect(() => {
+    if (activeInputIndex === null) return;
+    const q = companyInputs[activeInputIndex]?.trim() || '';
+    if (!q || q.length < 2) {
+      setSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[activeInputIndex];
+        return next;
+      });
+      return;
+    }
+    searchAbortRefs.current[activeInputIndex]?.abort();
+    const controller = new AbortController();
+    searchAbortRefs.current[activeInputIndex] = controller;
+    const doFetch = async () => {
+      try {
+        const res = await fetch(`/api/instruments/search?q=${encodeURIComponent(q)}&limit=15`, { signal: controller.signal });
+        const data = await res.json();
+        setSuggestions((prev) => ({
+          ...prev,
+          [activeInputIndex]: Array.isArray(data.items) ? data.items : []
+        }));
+      } catch {}
+    };
+    const t = setTimeout(doFetch, 200);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [companyInputs, activeInputIndex]);
 
   const handleCompare = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,12 +299,16 @@ export default function CompareStocksPage() {
     setCompanyInputs(['', '']);
     setComparisonData(null);
     setError(null);
+    setSuggestions({});
+    setActiveInputIndex(null);
   };
 
   const applyPreset = (preset: string[]) => {
     setCompanyInputs(preset.slice(0, 4));
     setComparisonData(null);
     setError(null);
+    setSuggestions({});
+    setActiveInputIndex(null);
   };
 
   return (
@@ -331,18 +389,57 @@ export default function CompareStocksPage() {
         >
           <form onSubmit={handleCompare} className="space-y-4">
             {companyInputs.map((company, index) => (
-              <div key={index} className="flex gap-2">
+              <div key={index} className="relative flex gap-2">
+                <div className="flex-1 relative">
                 <input
                   type="text"
                   value={company}
                   onChange={(e) => updateCompanyInput(index, e.target.value)}
-                  placeholder={`Company ${index + 1} (e.g., Reliance Industries, TCS, Infosys)`}
-                  className="flex-1 px-4 py-3 rounded-lg border border-border bg-background/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    onFocus={() => setActiveInputIndex(index)}
+                    onBlur={() => {
+                      // Delay to allow click on suggestion
+                      setTimeout(() => setActiveInputIndex(null), 200);
+                    }}
+                    placeholder={`Company ${index + 1} (e.g., INFY, RELIANCE, TCS)`}
+                    className="w-full px-4 py-3 rounded-lg border border-border bg-background/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                 />
+                  {suggestions[index] && suggestions[index].length > 0 && activeInputIndex === index && (
+                    <div className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-border bg-card shadow-xl">
+                      {suggestions[index].map((s, idx) => (
+                        <button
+                          type="button"
+                          key={`${s.symbol}-${s.exchange}-${idx}`}
+                          onClick={() => {
+                            updateCompanyInput(index, s.symbol);
+                            setSuggestions((prev) => {
+                              const next = { ...prev };
+                              delete next[index];
+                              return next;
+                            });
+                            setActiveInputIndex(null);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-border last:border-0 transition-colors"
+                        >
+                          <div className="font-medium text-foreground">{s.symbol}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {s.name || s.exchange} ({s.exchange})
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {companyInputs.length > 2 && (
                   <button
                     type="button"
-                    onClick={() => removeCompanyInput(index)}
+                    onClick={() => {
+                      removeCompanyInput(index);
+                      setSuggestions((prev) => {
+                        const next = { ...prev };
+                        delete next[index];
+                        return next;
+                      });
+                    }}
                     className="p-3 rounded-lg border border-border hover:bg-red-500/10 hover:border-red-500/50 transition-all"
                   >
                     <X className="h-5 w-5 text-red-500" />
