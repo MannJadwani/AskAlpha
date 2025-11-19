@@ -15,7 +15,7 @@ import {
   ExclamationTriangleIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
-import { TrendingUp, IndianRupee, Percent, BarChart3, LineChart, Gauge, Activity, Landmark, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { TrendingUp, IndianRupee, Percent, BarChart3, LineChart, Gauge, Activity, Landmark, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, LineChart as RLineChart, Line, CartesianGrid, Cell, Legend, ComposedChart, Area } from 'recharts';
 
 interface PerplexityAnalysis {
@@ -41,12 +41,39 @@ interface RecommendationData {
   structuredAnalysis?: { sections: { key: string; title: string; content: string }[]; kpis?: { label: string; value: string }[]; revenues_5yr?: { year: string; inr: number }[]; profits_5yr?: { year: string; inr: number }[]; revenue_unit?: string; profit_unit?: string } | null;
 }
 
+interface IpoRecommendation {
+  action: 'APPLY' | 'AVOID' | 'NEUTRAL';
+  confidence: number;
+  listingDate?: string;
+  priceBand?: string;
+  issueSize?: string;
+  lotSize?: string;
+  subscriptionStatus?: string;
+  gmp?: string;
+  reasoning: string;
+  keyFactors: string[];
+  risks: string[];
+  timeHorizon?: string;
+}
+
+interface IpoData {
+  recommendation: IpoRecommendation;
+  structuredAnalysis: {
+    sections: { key: string; title: string; content: string }[];
+    kpis: { label: string; value: string }[];
+    peerComparison?: { name: string; nav: string; pe: string; ronw: string; eps: string }[];
+  };
+  perplexityAnalysis: PerplexityAnalysis;
+  analysisTimestamp: string;
+}
+
 export default function RecommendationPage() {
   const { currentUser, fetchUser, creditsData } = useAuth();
   const [companyInput, setCompanyInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'input' | 'researching' | 'structuring' | 'complete'>('input');
   const [recommendationData, setRecommendationData] = useState<RecommendationData | null>(null);
+  const [ipoData, setIpoData] = useState<IpoData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renderedMarkdown, setRenderedMarkdown] = useState<string>('');
   const [mode, setMode] = useState<'stock' | 'ipo'>('stock');
@@ -155,6 +182,99 @@ export default function RecommendationPage() {
     };
   };
 
+  const buildIpoDemoData = (name: string): IpoData => {
+    return {
+      recommendation: {
+        action: 'APPLY',
+        confidence: 92,
+        listingDate: '2024-12-15',
+        priceBand: '₹475 - ₹500',
+        issueSize: '₹3,042 Cr',
+        lotSize: '30 Shares',
+        subscriptionStatus: 'Over-subscribed 69x',
+        gmp: '₹390 (78%)',
+        reasoning: `${name || 'Demo IPO'} is a market leader in the engineering services sector with deep domain expertise in automotive and aerospace. The company boasts a strong parentage, robust financial track record with 15% CAGR, and is debt-free. The valuation at 32x P/E is attractive compared to peers trading at 50x+.`,
+        keyFactors: [
+          'Market leader in niche ER&D services',
+          'Strong parentage & debt-free balance sheet',
+          'Attractive valuation vs listed peers',
+          'High growth in EV and Aerospace verticals'
+        ],
+        risks: [
+          'High client concentration (Top 5 clients contribute 60%)',
+          'Currency fluctuation exposure',
+          'Cyclical nature of automotive industry'
+        ],
+        timeHorizon: 'Listing Gain & Long Term'
+      },
+      structuredAnalysis: {
+        kpis: [
+          { label: 'Price Band', value: '₹475 - ₹500' },
+          { label: 'Lot Size', value: '30 Shares' },
+          { label: 'Issue Size', value: '₹3,042 Cr' },
+          { label: 'GMP', value: '₹390 (78%)' },
+          { label: 'P/E Ratio', value: '32.5x' },
+          { label: 'Revenue (TTM)', value: '₹4,500 Cr' },
+          { label: 'PAT Margin', value: '18.5%' },
+          { label: 'Listing Date', value: '2024-12-15' }
+        ],
+        sections: [
+          { 
+            key: 'overview', 
+            title: 'Company Overview', 
+            content: 'The company is a leading global engineering services provider offering product development and digital solutions to global OEMs. It operates in the **Automotive**, **Aerospace**, and **Industrial Heavy Machinery** verticals.' 
+          },
+          { 
+            key: 'financials', 
+            title: 'Financial Health', 
+            content: '- **Revenue Growth**: Consistent 15% CAGR over the last 3 years.\n- **Profitability**: Strong PAT margins of ~18%.\n- **Balance Sheet**: Completely debt-free with healthy cash reserves.' 
+          },
+          { 
+            key: 'valuation', 
+            title: 'Valuation & Peers', 
+            content: '- **P/E Ratio**: 32.5x (Upper Band)\n- **Peer Comparison**: KPIT Tech (60x), L&T Tech (45x).\n- **Verdict**: Reasonably priced leaving room for listing gains.' 
+          },
+          { 
+            key: 'objects_of_offer', 
+            title: 'Objects of the Offer', 
+            content: '- **Fresh Issue**: ₹1,200 Cr (utilized for debt repayment & capex).\n- **Offer for Sale (OFS)**: ₹1,842 Cr (exit for early investors & promoters).\n- **Total Issue Size**: ₹3,042 Cr.' 
+          },
+          { 
+            key: 'fund_utilization', 
+            title: 'Fund Utilization', 
+            content: 'The Net Proceeds from the Fresh Issue will be utilized for:\n1. **Debt Repayment**: ₹300 Cr.\n2. **Capex**: ₹250 Cr for new EV lab.\n3. **General Corporate Purposes**: Remaining amount.' 
+          },
+          { 
+            key: 'customer_concentration', 
+            title: 'Customer Concentration', 
+            content: '- **Top 5 Clients**: Contribute 62% of total revenue.\n- **Top 10 Clients**: Contribute 78% of total revenue.\n- **Geography**: 55% revenue from North America, 30% from Europe.' 
+          },
+          { 
+            key: 'strengths_risks', 
+            title: 'Strengths & Risks', 
+            content: '### Strengths\n- Deep domain expertise in EVs.\n- Long-standing relationships with marquee clients.\n\n### Risks\n- Client concentration risk.\n- Wage inflation affecting margins.' 
+          },
+          {
+            key: 'dates',
+            title: 'Important Dates',
+            content: '- **IPO Open**: Dec 12, 2024\n- **IPO Close**: Dec 14, 2024\n- **Allotment**: Dec 15, 2024\n- **Listing**: Dec 17, 2024'
+          }
+        ],
+        peerComparison: [
+          { name: 'Demo IPO Ltd', nav: '₹85.50', pe: '32.5x', ronw: '18.5%', eps: '₹15.40' },
+          { name: 'KPIT Tech', nav: '₹120.10', pe: '60.2x', ronw: '22.1%', eps: '₹24.50' },
+          { name: 'L&T Tech', nav: '₹450.00', pe: '45.8x', ronw: '26.4%', eps: '₹98.20' },
+          { name: 'Tata Elxsi', nav: '₹380.25', pe: '55.1x', ronw: '30.2%', eps: '₹110.00' }
+        ]
+      },
+      perplexityAnalysis: {
+        content: 'Demo analysis content generated for preview purposes...',
+        citations: ['https://www.sebi.gov.in', 'https://www.nseindia.com']
+      },
+      analysisTimestamp: new Date().toISOString()
+    };
+  };
+
   // Prefill from query string and auto-trigger
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -179,6 +299,7 @@ export default function RecommendationPage() {
     setRecommendationData(null);
     setRenderedMarkdown('');
     setIpoMarkdown(null);
+    setIpoData(null);
     setIsAnalyzing(false);
     setChatOpen(false);
     setMessages([]);
@@ -459,6 +580,7 @@ export default function RecommendationPage() {
     setIsAnalyzing(true);
     setError(null);
     setIpoMarkdown(null);
+    setIpoData(null);
     setCurrentStep('researching');
     try {
       setTimeout(() => {
@@ -473,10 +595,16 @@ export default function RecommendationPage() {
         const ed = await res.json();
         throw new Error(ed.error || 'Failed to analyze IPO');
       }
-      const data = await res.json();
-      const md = data?.analysis?.markdown || '';
-      setIpoMarkdown(md);
+      const responseData = await res.json();
+      
+      if (responseData.data) {
+         setIpoData(responseData.data);
+      } else if (responseData.analysis?.markdown) {
+         setIpoMarkdown(responseData.analysis.markdown);
+      }
+      
       setCurrentStep('complete');
+      await updatePlanDetails();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error analyzing IPO');
       setCurrentStep('input');
@@ -487,29 +615,29 @@ export default function RecommendationPage() {
 
   const getRecommendationColor = (action: string) => {
     switch (action) {
-      case 'BUY': return 'text-green-600 bg-green-50 border-green-200';
-      case 'SELL': return 'text-red-600 bg-red-50 border-red-200';
-      case 'HOLD': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'BUY': case 'APPLY': return 'text-green-600 bg-green-50 border-green-200';
+      case 'SELL': case 'AVOID': return 'text-red-600 bg-red-50 border-red-200';
+      case 'HOLD': case 'NEUTRAL': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
   const getRecommendationIcon = (action: string) => {
     switch (action) {
-      case 'BUY': return <ArrowTrendingUpIcon className="h-8 w-8" />;
-      case 'SELL': return <ArrowTrendingDownIcon className="h-8 w-8" />;
-      case 'HOLD': return <MinusIcon className="h-8 w-8" />;
+      case 'BUY': case 'APPLY': return <ArrowTrendingUpIcon className="h-8 w-8" />;
+      case 'SELL': case 'AVOID': return <ArrowTrendingDownIcon className="h-8 w-8" />;
+      case 'HOLD': case 'NEUTRAL': return <MinusIcon className="h-8 w-8" />;
       default: return <ChartBarIcon className="h-8 w-8" />;
     }
   };
 
   const getActionBorderClasses = (action: string) => {
     switch (action) {
-      case 'BUY':
+      case 'BUY': case 'APPLY':
         return '';
-      case 'SELL':
+      case 'SELL': case 'AVOID':
         return '';
-      case 'HOLD':
+      case 'HOLD': case 'NEUTRAL':
         return '';
       default:
         return 'border-l-8 border-l-zinc-300/60';
@@ -549,11 +677,14 @@ export default function RecommendationPage() {
     const k = keyOrTitle.toLowerCase();
     if (k.includes('financial')) return <BarChart3 className="h-4 w-4" />;
     if (k.includes('valuation') || k.includes('multiple')) return <Gauge className="h-4 w-4" />;
-    if (k.includes('fundamental') || k.includes('moat') || k.includes('business')) return <Landmark className="h-4 w-4" />;
+    if (k.includes('fundamental') || k.includes('moat') || k.includes('business') || k.includes('overview')) return <Landmark className="h-4 w-4" />;
     if (k.includes('news') || k.includes('event')) return <Activity className="h-4 w-4" />;
     if (k.includes('industry') || k.includes('trend')) return <LineChart className="h-4 w-4" />;
-    if (k.includes('risk')) return <AlertTriangle className="h-4 w-4" />;
+    if (k.includes('risk') || k.includes('strength')) return <AlertTriangle className="h-4 w-4" />;
     if (k.includes('outlook') || k.includes('catalyst')) return <TrendingUp className="h-4 w-4" />;
+    if (k.includes('dates')) return <ClockIcon className="h-4 w-4" />;
+    if (k.includes('fund') || k.includes('objective') || k.includes('offer')) return <IndianRupee className="h-4 w-4" />;
+    if (k.includes('customer') || k.includes('concentration')) return <Users className="h-4 w-4" />;
     return <BarChart3 className="h-4 w-4" />;
   };
 
@@ -731,6 +862,18 @@ export default function RecommendationPage() {
                     className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg" />
                 </div>
                 <ShinyButton type="submit" className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10">Analyze IPO</ShinyButton>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIpoData(buildIpoDemoData(ipoInput || 'Demo IPO'));
+                      setCurrentStep('complete');
+                    }}
+                    className="mt-3 text-xs px-3 py-2 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
+                  >
+                    Load demo report (dev mode)
+                  </button>
+                </div>
               </form>
             </motion.div>
           )}
@@ -1170,7 +1313,227 @@ export default function RecommendationPage() {
             </>
           )}
 
-          {currentStep === 'complete' && mode==='ipo' && ipoMarkdown && (
+          {currentStep === 'complete' && mode === 'ipo' && ipoData && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              {/* IPO Name Header */}
+              <div className="text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+                  {ipoInput}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Analysis generated on {new Date(ipoData.analysisTimestamp).toLocaleDateString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
+              {/* Recommendation + KPI Row */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className={`p-8 ${getActionBorderClasses(ipoData.recommendation.action)}`}>
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center space-x-4">
+                      <div className={`p-3 rounded-xl ${getRecommendationColor(ipoData.recommendation.action)}`}>
+                        {getRecommendationIcon(ipoData.recommendation.action)}
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                            {ipoData.recommendation.action}
+                          </h2>
+                          <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-foreground/80">
+                            Confidence {ipoData.recommendation.confidence}%
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">Based on IPO prospectus & market data</p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Price Band</p>
+                      <p className="text-2xl font-semibold text-foreground">
+                        {ipoData.recommendation.priceBand || 'N/A'}
+                      </p>
+                      {ipoData.recommendation.gmp && (
+                        <p className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
+                          GMP: {ipoData.recommendation.gmp}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* KPI Grid */}
+                  {ipoData.structuredAnalysis?.kpis?.length === 8 && (
+                    <div className="rounded-2xl border border-border bg-card/50 p-4 sm:p-6 mb-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        {ipoData.structuredAnalysis.kpis.map((item, idx) => (
+                          <div key={`kpi-${idx}`} className={`flex items-start gap-3 p-4 ${idx % 2 === 1 ? 'sm:border-l sm:border-border' : ''} ${idx >= 2 ? 'sm:border-t sm:border-border' : ''} ${idx % 4 !== 0 ? 'lg:border-l lg:border-border' : ''} ${idx >= 4 ? 'lg:border-t lg:border-border' : ''}`}>
+                            <div className="w-10 h-10 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-foreground/80">{getKpiIcon(item.label)}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm text-muted-foreground mb-1 whitespace-normal break-words">{item.label}</div>
+                              <div className="text-xl font-semibold text-foreground leading-tight whitespace-normal break-words">{item.value}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-base font-semibold tracking-wide text-foreground mb-2">Key Reasoning</h3>
+                      <p className="text-foreground/90 leading-relaxed text-sm">
+                        {ipoData.recommendation.reasoning}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold tracking-wide text-foreground mb-2">Verdict / Horizon</h3>
+                      <p className="text-foreground/90 text-sm">
+                        {ipoData.recommendation.timeHorizon || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Factors */}
+                <div className="px-8 py-6 border-t border-border bg-muted">
+                  <h3 className="text-base font-semibold tracking-wide text-foreground mb-3">Key Factors</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs uppercase tracking-wide text-foreground/70 mb-2">Strengths</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ipoData.recommendation.keyFactors.map((factor, index) => (
+                          <div key={index} className="flex items-start gap-2 rounded-lg border border-border bg-card/50 p-3">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-foreground/90 leading-snug">{factor}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xs uppercase tracking-wide text-foreground/70 mb-2">Risks</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ipoData.recommendation.risks.map((risk, index) => (
+                          <div key={index} className="flex items-start gap-2 rounded-lg border border-border bg-card/50 p-3">
+                            <AlertTriangle className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-foreground/90 leading-snug">{risk}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Analysis Sections */}
+              <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {ipoData.structuredAnalysis?.sections?.map((sec, idx) => {
+                    const html = (() => { try { return DOMPurify.sanitize(marked.parse(sec.content) as string); } catch { return DOMPurify.sanitize(sec.content); } })();
+                    return (
+                      <div key={sec.key + idx} className="rounded-2xl border border-border bg-card/60 p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-8 h-8 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0">
+                            {getSectionIcon(sec.key || sec.title)}
+                          </div>
+                          <h4 className="text-base font-semibold text-foreground truncate">{sec.title}</h4>
+                        </div>
+                        <div className="prose dark:prose-invert max-w-none">
+                          <div
+                            className="text-foreground/90 leading-relaxed text-sm"
+                            dangerouslySetInnerHTML={{ __html: html }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Peer Comparison Table */}
+                {ipoData.structuredAnalysis?.peerComparison && ipoData.structuredAnalysis.peerComparison.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-border">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0">
+                        <Activity className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground">Peer Comparison</h4>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-muted-foreground uppercase text-xs font-semibold">
+                          <tr>
+                            <th className="px-4 py-3">Company</th>
+                            <th className="px-4 py-3 text-right">NAV</th>
+                            <th className="px-4 py-3 text-right">P/E</th>
+                            <th className="px-4 py-3 text-right">RONW (%)</th>
+                            <th className="px-4 py-3 text-right">EPS</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {ipoData.structuredAnalysis.peerComparison.map((peer, idx) => (
+                            <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3 font-medium text-foreground">{peer.name}</td>
+                              <td className="px-4 py-3 text-right text-foreground/90">{peer.nav}</td>
+                              <td className="px-4 py-3 text-right text-foreground/90">{peer.pe}</td>
+                              <td className="px-4 py-3 text-right text-foreground/90">{peer.ronw}</td>
+                              <td className="px-4 py-3 text-right text-foreground/90">{peer.eps}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Citations */}
+                {ipoData.perplexityAnalysis?.citations && ipoData.perplexityAnalysis.citations.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-border">
+                    <h4 className="text-lg font-semibold text-foreground mb-4">Sources</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {ipoData.perplexityAnalysis.citations.map((citation, index) => (
+                        <a
+                          key={index}
+                          href={citation}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-cyan-300 hover:text-cyan-200 hover:underline block truncate"
+                        >
+                          {citation}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4">
+                <ShinyButton
+                  onClick={() => {
+                    setCurrentStep('input');
+                    setIpoData(null);
+                    setIpoMarkdown(null);
+                    setIpoInput('');
+                  }}
+                  className="px-6 py-3 !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10"
+                >
+                  Analyze Another IPO
+                </ShinyButton>
+              </div>
+
+            </motion.div>
+          )}
+
+          {currentStep === 'complete' && mode==='ipo' && !ipoData && ipoMarkdown && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
               <div className="prose prose-lg dark:prose-invert max-w-none">
                 <div
