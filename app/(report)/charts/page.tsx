@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShinyButton } from '@/components/magicui/shiny-button';
 import { Search, Rocket, Loader2 } from 'lucide-react';
+import { ComingSoon } from '@/components/ui/coming-soon';
 
 export default function Charts2Page() {
   const [query, setQuery] = useState('last five years revenue of Reliance');
@@ -44,6 +45,7 @@ export default function Charts2Page() {
   }
 
   return (
+    <ComingSoon label="Coming Soon" message="This feature is currently under development.">
     <div className="items-center justify-center w-full flex flex-col">
       <div className="mx-auto max-w-6xl px-6 py-10 w-full">
         <div className="text-center mb-8">
@@ -107,8 +109,9 @@ export default function Charts2Page() {
             )}
           </div>
         </motion.div>
-        </div>
       </div>
+    </div>
+    </ComingSoon>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ShinyButton } from '@/components/magicui/shiny-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, BarChart3, AlertCircle, Loader2, Plus, X, Gauge, Target, Trophy, Info } from 'lucide-react';
+import { ComingSoon } from '@/components/ui/coming-soon';
 
 interface CompanyMetrics {
   currentPrice: string;
@@ -167,10 +168,12 @@ export default function CompareStocksPage() {
     }
   };
 
-  const getRatingColor = (rating: string) => {
-    if (rating.toUpperCase().includes('BUY')) return 'text-green-500 bg-green-500/10 border-green-500/20';
-    if (rating.toUpperCase().includes('SELL')) return 'text-red-500 bg-red-500/10 border-red-500/20';
-    if (rating.toUpperCase().includes('HOLD')) return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+  const getRatingColor = (rating: string | undefined | null) => {
+    if (!rating) return 'text-muted-foreground bg-muted/10 border-border';
+    const upperRating = rating.toUpperCase();
+    if (upperRating.includes('BUY')) return 'text-green-500 bg-green-500/10 border-green-500/20';
+    if (upperRating.includes('SELL')) return 'text-red-500 bg-red-500/10 border-red-500/20';
+    if (upperRating.includes('HOLD')) return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
     return 'text-muted-foreground bg-muted/10 border-border';
   };
 
@@ -312,6 +315,7 @@ export default function CompareStocksPage() {
   };
 
   return (
+    <ComingSoon label="Coming Soon" message="This feature is currently under development.">
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
         {/* Header */}
@@ -468,7 +472,7 @@ export default function CompareStocksPage() {
                 {isComparing ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    Analyzing with Gemini AI...
+                    Analyzing...
                   </>
                 ) : (
                   <>
@@ -609,9 +613,11 @@ export default function CompareStocksPage() {
                               <div className="text-sm font-semibold">{company.name}</div>
                               <div className="text-xs text-muted-foreground">{company.symbol}</div>
                             </div>
-                            <span className={`px-2 py-1 rounded text-xs border ${getRatingColor(company.analystRating)}`}>
-                              {company.analystRating}
-                            </span>
+                            {company.analystRating && (
+                              <span className={`px-2 py-1 rounded text-xs border ${getRatingColor(company.analystRating)}`}>
+                                {company.analystRating}
+                              </span>
+                            )}
                           </div>
                         </th>
                       ))}
@@ -750,5 +756,6 @@ export default function CompareStocksPage() {
         </AnimatePresence>
       </div>
     </div>
+    </ComingSoon>
   );
 }

@@ -5,6 +5,7 @@ import { ShinyButton } from '@/components/magicui/shiny-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, TrendingUp, AlertCircle, Download, Trash2, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { ComingSoon } from '@/components/ui/coming-soon';
 
 interface PortfolioHolding {
   symbol: string;
@@ -219,6 +220,7 @@ export default function PortfolioAnalysisPage() {
   };
 
   return (
+    <ComingSoon label="Coming Soon" message="This feature is currently under development.">
     <div className="items-center justify-center w-full flex flex-col">
       <div className="mx-auto max-w-7xl px-6 py-12">
         {/* Header */}
@@ -503,7 +505,7 @@ export default function PortfolioAnalysisPage() {
                 {isAnalyzing ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Analyzing with Gemini AI...
+                    Analyzing...
                   </>
                 ) : (
                   <>
@@ -699,6 +701,7 @@ export default function PortfolioAnalysisPage() {
         )}
       </div>
     </div>
+    </ComingSoon>
   );
 }
 

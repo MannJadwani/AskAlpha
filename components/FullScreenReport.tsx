@@ -57,7 +57,7 @@ export default function FullScreenReport({ report, onClose }: FullScreenReportPr
             })}
           </div>
 
-          {/* Sources Display - Perplexity Style */}
+          {/* Sources Display */}
           {report.sources && report.sources.length > 0 && (
             <div className="mb-8 px-6 py-6 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl">
               <div className="flex items-center gap-3 mb-4">

@@ -756,8 +756,8 @@ export default function RecommendationPage() {
                 </h3>
                 <p className="text-muted-foreground mb-6">
                   {currentStep === 'researching'
-                    ? 'Analyzing real-time market data, financial reports, and recent news using Perplexity AI...'
-                    : 'Structuring insights and generating investment recommendation using GPT-4...'
+                    ? 'Analyzing real-time market data, financial reports, and recent news...'
+                    : 'Structuring insights and generating investment recommendation...'
                   }
                 </p>
 
