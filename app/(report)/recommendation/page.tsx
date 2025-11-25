@@ -85,6 +85,7 @@ export default function RecommendationPage() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [showDetailed, setShowDetailed] = useState(false);
+  const [showDetailedIpo, setShowDetailedIpo] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
   const [highlightAsk, setHighlightAsk] = useState(false);
 
@@ -862,18 +863,20 @@ export default function RecommendationPage() {
                     className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-lg" />
                 </div>
                 <ShinyButton type="submit" className="w-full justify-center py-4 text-base !bg-black !text-white !ring-black/20 dark:!bg-white/5 dark:!text-zinc-200 dark:!ring-white/10">Analyze IPO</ShinyButton>
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIpoData(buildIpoDemoData(ipoInput || 'Demo IPO'));
-                      setCurrentStep('complete');
-                    }}
-                    className="mt-3 text-xs px-3 py-2 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
-                  >
-                    Load demo report (dev mode)
-                  </button>
-                </div>
+                {isDev && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIpoData(buildIpoDemoData(ipoInput || 'Demo IPO'));
+                        setCurrentStep('complete');
+                      }}
+                      className="mt-3 text-xs px-3 py-2 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
+                    >
+                      Load demo report (dev mode)
+                    </button>
+                  </div>
+                )}
               </form>
             </motion.div>
           )}
@@ -1436,27 +1439,46 @@ export default function RecommendationPage() {
 
               {/* Detailed Analysis Sections */}
               <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {ipoData.structuredAnalysis?.sections?.map((sec, idx) => {
-                    const html = (() => { try { return DOMPurify.sanitize(marked.parse(sec.content) as string); } catch { return DOMPurify.sanitize(sec.content); } })();
-                    return (
-                      <div key={sec.key + idx} className="rounded-2xl border border-border bg-card/60 p-5">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-8 h-8 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0">
-                            {getSectionIcon(sec.key || sec.title)}
-                          </div>
-                          <h4 className="text-base font-semibold text-foreground truncate">{sec.title}</h4>
-                        </div>
-                        <div className="prose dark:prose-invert max-w-none">
-                          <div
-                            className="text-foreground/90 leading-relaxed text-sm"
-                            dangerouslySetInnerHTML={{ __html: html }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <h3 className="text-xl font-semibold text-foreground">Detailed Analysis</h3>
+                  <button
+                    onClick={() => setShowDetailedIpo(v => !v)}
+                    className="text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 dark:hover:bg-white/10"
+                  >
+                    {showDetailedIpo ? 'Hide detailed analysis' : 'Read detailed analysis'}
+                  </button>
                 </div>
+
+                {!showDetailedIpo ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {ipoData.structuredAnalysis?.sections?.map((sec, idx) => {
+                      const html = (() => { try { return DOMPurify.sanitize(marked.parse(sec.content) as string); } catch { return DOMPurify.sanitize(sec.content); } })();
+                      return (
+                        <div key={sec.key + idx} className="rounded-2xl border border-border bg-card/60 p-5">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-muted ring-1 ring-border flex items-center justify-center flex-shrink-0">
+                              {getSectionIcon(sec.key || sec.title)}
+                            </div>
+                            <h4 className="text-base font-semibold text-foreground truncate">{sec.title}</h4>
+                          </div>
+                          <div className="prose dark:prose-invert max-w-none">
+                            <div
+                              className="text-foreground/90 leading-relaxed text-sm"
+                              dangerouslySetInnerHTML={{ __html: html }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="prose prose-lg dark:prose-invert max-w-none">
+                    <div
+                      className="text-foreground/90 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize((() => { try { return marked.parse(ipoData.perplexityAnalysis?.content || '') as string; } catch { return ipoData.perplexityAnalysis?.content || ''; } })()) }}
+                    />
+                  </div>
+                )}
                 
                 {/* Peer Comparison Table */}
                 {ipoData.structuredAnalysis?.peerComparison && ipoData.structuredAnalysis.peerComparison.length > 0 && (

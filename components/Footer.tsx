@@ -4,7 +4,7 @@ export default function Footer() {
   return (
     <footer className="py-8 border-t border-white/10 text-white/60">
       <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <p className="text-sm">© {new Date().getFullYear()} Ask Alpha</p>
+        <p className="text-sm">© Copyright 2025, All Rights Reserved by Beacon Capital Advisors Private Limited</p>
         <nav className="flex items-center gap-6 text-sm">
           <Link className="hover:text-white" href="/blog">Blog</Link>
           <Link className="hover:text-white" href="/terms">Terms</Link>
