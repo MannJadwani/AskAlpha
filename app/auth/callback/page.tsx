@@ -35,8 +35,8 @@ export default function AuthCallback() {
           });
 
           if (response.ok) {
-            // Successfully signed up, redirect to recommendation page
-            router.push('/recommendation');
+            // Successfully signed up, redirect to report-gen page
+            router.push('/report-gen');
           } else {
             const errorData = await response.json();
             console.error('Error in Google signup:', errorData);

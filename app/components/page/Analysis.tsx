@@ -365,10 +365,10 @@ export default function CompanyAnalysis() {
   };
 
   const handleGenerateReport = async () => {
-    // Redirect to recommendation page instead of generating old-style report
+    // Redirect to report-gen page instead of generating old-style report
     if (companyName) {
       const encodedCompanyName = encodeURIComponent(companyName.trim());
-      router.push(`/recommendation?symbol=${encodedCompanyName}`);
+      router.push(`/report-gen?symbol=${encodedCompanyName}`);
     }
     return;
     
@@ -436,9 +436,9 @@ ${section.InformationNeeded.split(',').map(info => `
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
-    // Redirect to recommendation page with the company name pre-filled
+    // Redirect to report-gen page with the company name pre-filled
     const encodedCompanyName = encodeURIComponent(inputMessage.trim());
-    router.push(`/recommendation?symbol=${encodedCompanyName}`);
+    router.push(`/report-gen?symbol=${encodedCompanyName}`);
   };
 
   const handleRecommendationClick = (company: Company) => {

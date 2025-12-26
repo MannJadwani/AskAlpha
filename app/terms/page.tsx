@@ -10,7 +10,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 prose prose-invert">
       <h1>Terms & Conditions</h1>
-      
+
       <h2>ANNEXURE-B</h2>
       <h3>Disclosure of minimum mandatory terms and conditions to clients</h3>
 
@@ -37,7 +37,7 @@ export default function TermsPage() {
         </p>
         <p>
           I/We are subscribing to the research services for our own benefits and consumption, and any reliance placed on the research report provided by research analyst shall be as per our own judgement and assessment of the conclusions contained in the research report.
-        </p>
+      </p>
         <p>
           I/We understand that --
         </p>

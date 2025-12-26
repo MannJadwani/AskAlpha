@@ -104,7 +104,7 @@ export default function AskAlphaLanding() {
     const q = heroInput.trim();
     if (!q) return;
     const params = new URLSearchParams({ symbol: q });
-    window.location.href = `/recommendation?${params.toString()}`;
+    window.location.href = `/report-gen?${params.toString()}`;
   };
 
   const handleDownloadReport = () => {
@@ -113,12 +113,12 @@ export default function AskAlphaLanding() {
   };
 
   const handleTryFreeAnalysis = () => {
-    // Scroll to hero section or navigate to recommendation page
+    // Scroll to hero section or navigate to report-gen page
     const heroSection = document.getElementById('hero');
     if (heroSection) {
       heroSection.scrollIntoView({ behavior: 'smooth' });
     } else {
-      window.location.href = '/recommendation';
+      window.location.href = '/report-gen';
     }
   };
 
@@ -250,7 +250,7 @@ export default function AskAlphaLanding() {
           { title: 'Features', icon: <Sparkles className="h-5 w-5" />, href: '#features' },
           { title: 'Use cases', icon: <Users className="h-5 w-5" />, href: '#personas' },
           { title: 'Blog', icon: <Newspaper className="h-5 w-5" />, href: '/blog' },
-          { title: 'Recommendation', icon: <BarChart3 className="h-5 w-5" />, href: '/recommendation' },
+          { title: 'Research Report', icon: <BarChart3 className="h-5 w-5" />, href: '/report-gen' },
           { title: 'Pricing', icon: <PieChart className="h-5 w-5" />, href: '/pricing' },
           { title: 'Templates', icon: <Layout className="h-5 w-5" />, href: '#templates' },
           { title: 'Get started', icon: <Rocket className="h-5 w-5" />, href: '/sign-up' },

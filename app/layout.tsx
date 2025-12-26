@@ -3,20 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MainLayout from "@/components/MainLayout";
-// import { useEffect } from "react";
-// import { initializeDatabase } from '../lib/db';
-// import { prisma } from '@/lib/supabaseDB';
 import { initializeDatabase } from "@/lib/db";
-
-
-// (async () => {
-//   try {
-//     await prisma.$queryRaw`SELECT 1`;
-//     console.log('✅ DB connected on startup');
-//   } catch (err) {
-//     console.error('❌ Failed to connect to DB on startup', err);
-//   }
-// })();
 
 
 

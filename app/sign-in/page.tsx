@@ -133,7 +133,7 @@ export default function SignIn() {
 
       // Redirect to the dashboard after successful login
       await new Promise((resolve) => setTimeout(resolve, 100));
-      router.replace('/recommendation');
+      router.replace('/report-gen');
     } catch (err) {
       setError('Failed to sign in. Please try again.');
       console.error(err);

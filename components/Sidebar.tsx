@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { CurrentUser } from '@/types/auth';
 import { ShinyButton } from '@/components/magicui/shiny-button';
-import { FileText, Sparkles, FolderOpen, Menu, Moon, Sun, Briefcase, BarChart2, GitCompare } from 'lucide-react';
+import { FileText, FolderOpen, Menu, Moon, Sun, FileSearch, TrendingUp } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -103,31 +103,25 @@ export default function Sidebar() {
   // Navigation items with their paths and icons
   const navItems = [
     {
-      name: 'Alpha\'s Recommendation',
-      path: '/recommendation',
-      icon: (<Sparkles className="h-4 w-4 text-black dark:text-neutral-400" />),
+      name: 'Top Stocks',
+      path: '/top-stocks',
+      icon: (<TrendingUp className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
     {
-      name: 'Compare Stocks',
-      path: '/compare',
-      icon: (<GitCompare className="h-4 w-4 text-black dark:text-neutral-400" />),
+      name: 'Research Report',
+      path: '/report-gen',
+      icon: (<FileSearch className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
     {
-      name: 'Portfolio Analysis',
-      path: '/portfolio',
-      icon: (<Briefcase className="h-4 w-4 text-black dark:text-neutral-400" />),
+      name: 'IPO Report',
+      path: '/ipo-report',
+      icon: (<FileSearch className="h-4 w-4 text-black dark:text-neutral-400" />),
     },
-  
-		{
-			name: 'Generate Charts',
-			path: '/charts',
-			icon: (<BarChart2 className="h-4 w-4 text-black dark:text-neutral-400" />),
-		},
-    // {
-    //   name: 'My Reports',
-    //   path: '/my-reports',
-    //   icon: (<FolderOpen className="h-4 w-4 text-black dark:text-neutral-400" />),
-    // },
+    {
+      name: 'My Reports',
+      path: '/my-reports',
+      icon: (<FolderOpen className="h-4 w-4 text-black dark:text-neutral-400" />),
+    },
 	// Subscription link moved into the profile menu below
   ];
 
@@ -264,7 +258,7 @@ export default function Sidebar() {
           </nav>
 
           {/* Sidebar footer - Profile menu */}
-          <div className={`border-t border-sidebar-border ${isCollapsed ? 'p-2' : 'p-4'} relative`}>
+          <div className={`border-t border-sidebar-border ${isCollapsed ? 'p-2' : 'p-4'} relative z-40`}>
             {loading ? (
               <p>Loading...</p>
             ) : User ? (
@@ -282,13 +276,31 @@ export default function Sidebar() {
                     </svg>
                   </button>
                 ) : (
-                  <button onClick={() => setProfileOpen(!profileOpen)} className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-accent ring-1 ring-inset ring-sidebar-border text-sidebar-foreground">
-                    {User.user.email ? User.user.email.charAt(0).toUpperCase() : 'U'}
-                  </button>
+                  <div className="relative">
+                    <button onClick={() => setProfileOpen(!profileOpen)} className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-accent ring-1 ring-inset ring-sidebar-border text-sidebar-foreground">
+                      {User.user.email ? User.user.email.charAt(0).toUpperCase() : 'U'}
+                    </button>
+                    {profileOpen && (
+                      <div className="absolute left-full ml-2 bottom-0 w-64 rounded-xl border border-sidebar-border bg-sidebar/95 backdrop-blur p-4 shadow-2xl z-50">
+                        <div className="mb-3">
+                          <p className="text-sm text-sidebar-foreground/70">Signed in as</p>
+                          <p className="text-sm font-medium text-sidebar-foreground truncate">{User.user.email || ''}</p>
+                        </div>
+                        <div className="mb-3 flex items-center justify-between text-sm">
+                          <span className="text-sidebar-foreground/70">Credits left</span>
+                          <span className="text-sidebar-foreground font-semibold">{creditsData || 5}</span>
+                        </div>
+                        <div className="mb-3">
+                          <Link href="/pricing" className="inline-flex items-center rounded-lg px-3 py-2 bg-sidebar-accent ring-1 ring-inset ring-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent">Manage subscription</Link>
+                        </div>
+                        <ShinyButton onClick={handleSignOut} className={`w-full justify-center cursor-pointer ${theme === 'light' ? '!bg-black !text-white !ring-black/20 hover:shadow-[0_18px_60px_-10px_rgba(0,0,0,0.45)]' : ''}`}>Sign Out</ShinyButton>
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                {profileOpen && (
-                  <div className={`${isCollapsed ? 'absolute left-2 right-2 bottom-14' : 'absolute left-4 right-4 bottom-16'} rounded-xl border border-sidebar-border bg-sidebar/95 backdrop-blur p-4 shadow-2xl`}>
+                {profileOpen && !isCollapsed && (
+                  <div className="absolute left-4 right-4 bottom-16 rounded-xl border border-sidebar-border bg-sidebar/95 backdrop-blur p-4 shadow-2xl z-50">
                     <div className="mb-3">
                       <p className="text-sm text-sidebar-foreground/70">Signed in as</p>
                       <p className="text-sm font-medium text-sidebar-foreground truncate">{User.user.email || ''}</p>

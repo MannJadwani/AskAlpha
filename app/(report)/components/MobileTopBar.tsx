@@ -7,7 +7,7 @@ export default function MobileTopBar() {
   return (
     <header className="md:hidden sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur">
       <div className="h-14 px-4 flex items-center justify-between">
-        <Link href="/recommendation" className="flex items-center gap-2">
+        <Link href="/report-gen" className="flex items-center gap-2">
           {/* Light mode logo */}
           <Image
             src="/assets/logo/dark-logo.png"

@@ -28,7 +28,7 @@ export default function SignUp() {
         const res = await fetch('/api/auth/me');
         if (!cancelled && res.ok) {
           const data = await res.json();
-          if (data?.user) router.replace('/recommendation');
+          if (data?.user) router.replace('/report-gen');
         }
       } catch (_) {
         // no-op
@@ -135,7 +135,7 @@ export default function SignUp() {
       // createPlan(data.user.id);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      router.replace('/recommendation');
+      router.replace('/report-gen');
     } catch (err) {
       setError('Failed to create account. Please try again.');
       console.error(err);

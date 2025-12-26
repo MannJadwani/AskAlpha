@@ -72,9 +72,10 @@ Return concise facts:
 - Grey Market Premium (GMP) if available
 - Subscription Status (if live/closed)
 - Financials (Revenue, Profit, Margins for last 3 years)
-- Valuation (P/E, P/B vs Peers)
+- Valuation metrics: P/E ratio at upper price band, Book Value / NAV per share, EPS, RONW (Return on Net Worth)
+- PEER COMPARISON: List 2-4 comparable listed companies in the same sector with their current P/E, NAV/Book Value, EPS, and RONW
 - Key Strengths and Risks
-Keep answers strictly factual; include dates (ISO preferred) and currencies.`;
+Keep answers strictly factual; include dates (ISO preferred) and currencies (INR).`;
 
         const ppRes = await fetch('https://api.perplexity.ai/chat/completions', {
           method: 'POST',
@@ -177,15 +178,21 @@ Return a JSON object with this exact structure:
     { "key": "dates", "title": "Important Dates", "content": "Markdown content..." }
   ],
   "peerComparison": [
-    { "name": "Company A", "nav": "₹120", "pe": "25x", "ronw": "15%", "eps": "₹10" },
-    { "name": "Company B", "nav": "₹140", "pe": "30x", "ronw": "18%", "eps": "₹12" }
+    { "name": "${ipoName}", "nav": "₹XX", "pe": "XXx", "ronw": "XX%", "eps": "₹XX" },
+    { "name": "Listed Peer 1", "nav": "₹XX", "pe": "XXx", "ronw": "XX%", "eps": "₹XX" },
+    { "name": "Listed Peer 2", "nav": "₹XX", "pe": "XXx", "ronw": "XX%", "eps": "₹XX" }
   ]
 }
 
 Rules:
 - kpis: Exactly 8 key metrics. Use "N/A" if not found. Prefer INR.
 - sections: Use markdown bullets and short paragraphs. Ensure "Fund Utilization" covers the planned use of proceeds. Include "Customer Concentration" if data is available.
-- peerComparison: Include the IPO company and at least 2-3 listed peers. Return precise figures for NAV, P/E, RONW (%), and EPS.
+- peerComparison: CRITICAL - You MUST include REAL peer comparison data:
+  * First row: The IPO company itself with its actual NAV (Book Value per share), P/E ratio at upper price band, RONW (Return on Net Worth), and EPS
+  * Subsequent rows: 2-4 ACTUAL listed peer companies in the same sector/industry with their REAL current market data
+  * Use actual company names (e.g., "KPIT Technologies", "L&T Technology Services", "Tata Elxsi" for IT services)
+  * Use real figures from the research context - DO NOT use placeholder or made-up numbers
+  * If peer data is not available in the research, use "N/A" for values but still include relevant peer company names
 `;
 
     const secCompletion = await openai.chat.completions.create({

@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, FileText, User2, Briefcase, BarChart2, GitCompare } from 'lucide-react';
+import { Sparkles, FileText, User2, Briefcase, BarChart2, GitCompare, FileSearch } from 'lucide-react';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const items = [
-    { href: '/recommendation', label: 'AI', icon: <Sparkles className="h-5 w-5" /> },
+    { href: '/report-gen', label: 'AI', icon: <Sparkles className="h-5 w-5" /> },
+    { href: '/ipo-report', label: 'IPO', icon: <FileSearch className="h-5 w-5" /> },
     { href: '/compare', label: 'Compare', icon: <GitCompare className="h-5 w-5" /> },
     { href: '/charts', label: 'Charts', icon: <BarChart2 className="h-5 w-5" /> },
     { href: '/pricing', label: 'Pro', icon: <User2 className="h-5 w-5" /> },

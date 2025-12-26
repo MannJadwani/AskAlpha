@@ -40,6 +40,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
+# alpha folder (Python backend)
+alpha/venv/
+alpha/__pycache__/
+alpha/**/__pycache__/
+alpha/*.pyc
+alpha/*.pyo
+alpha/*.pyd
+alpha/.Python
+alpha/alphaConsole/node_modules/
+alpha/alphaConsole/dist/
+alpha/alphaConsole/.vite/
+alpha/alphaConsole/.env
+alpha/alphaConsole/.env.local
+alpha/files/*.html
 
-/lib/generated/prisma
+

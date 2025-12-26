@@ -37,7 +37,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: abs("/"),               lastModified: new Date(), changeFrequency: "daily",   priority: 1 },
     { url: abs("/blog"),           lastModified: new Date(), changeFrequency: "daily",   priority: 0.9 },
     { url: abs("/pricing"),        lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: abs("/recommendation"), lastModified: new Date(), changeFrequency: "daily",   priority: 0.9 },
+    { url: abs("/report-gen"), lastModified: new Date(), changeFrequency: "daily",   priority: 0.9 },
     { url: abs("/terms"),          lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },
     { url: abs("/privacy"),        lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },
     { url: abs("/disclaimer"),     lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },

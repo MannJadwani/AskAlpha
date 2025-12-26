@@ -32,35 +32,16 @@ export default function ReportDetailView({
 
   if (!selectedReport) {
     return (
-      <div className="bg-gradient-to-br from-white/95 via-slate-50/90 to-white/80 dark:from-slate-900/95 dark:via-slate-800/90 dark:to-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 dark:border-slate-700/40 p-16 text-center h-full flex flex-col items-center justify-center group hover:shadow-2xl transition-all duration-700 w-full">
-        {/* Animated background */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 via-purple-500/3 to-indigo-500/3 dark:from-blue-400/2 dark:via-purple-400/2 dark:to-indigo-400/2 rounded-3xl"></div>
+      <div className="rounded-2xl border border-border bg-card p-16 text-center h-full flex flex-col items-center justify-center">
+        <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center mb-6">
+          <FileText className="h-10 w-10 text-muted-foreground" />
         </div>
-        
-        {/* Icon with enhanced design */}
-        <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 flex items-center justify-center mb-8 shadow-xl transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 to-transparent"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-blue-400/20 to-purple-600/20 blur-xl"></div>
-        </div>
-        
-        {/* Enhanced typography */}
-        <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-800 dark:from-white dark:via-slate-100 dark:to-slate-200 bg-clip-text text-transparent mb-4 tracking-tight">
+        <h3 className="text-2xl font-bold text-foreground mb-4">
           Select a Report
         </h3>
-        <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
-          Choose a report from the sidebar to view its detailed analysis, insights, and comprehensive data
+        <p className="text-muted-foreground leading-relaxed max-w-md mx-auto">
+          Choose a report from the sidebar to view its detailed analysis and insights
         </p>
-        
-        {/* Subtle animation indicator */}
-        <div className="mt-8 flex items-center space-x-2 opacity-50">
-          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-          <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-          <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-        </div>
       </div>
     );
   }
