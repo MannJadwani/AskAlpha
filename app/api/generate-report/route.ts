@@ -15,13 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Proxy request to the Alpha backend
+    // Note: Don't convert to uppercase here - let the backend handle symbol/name resolution
     const response = await fetch(`${ALPHA_BACKEND_URL}/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        symbol: symbol.trim().toUpperCase(),
+        symbol: symbol.trim(), // Pass as-is - backend will resolve symbol or company name
         horizon_years: typeof horizon_years === 'number' ? horizon_years : 5,
       }),
     });

@@ -34,6 +34,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 
 BASE_DIR = os.path.dirname(__file__)
@@ -226,6 +228,16 @@ def init_db() -> None:
         );
         """
     )
+    # Mapping from company name to NSE symbol
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS name_to_symbol (
+            company_name TEXT PRIMARY KEY,
+            nse_symbol TEXT NOT NULL,
+            last_resolved_at TEXT
+        );
+        """
+    )
 
     # Global stock symbol index (from Groww instruments CSV)
     cur.execute(
@@ -281,6 +293,170 @@ def get_mapped_screener_symbol(input_symbol: str) -> Optional[str]:
     ).fetchone()
     conn.close()
     return row["screener_symbol"] if row else None
+
+
+def get_symbol_from_name(company_name: str) -> Optional[str]:
+    """
+    Check if we already have a symbol mapped for this company name.
+    """
+    conn = connect_db()
+    cur = conn.cursor()
+    row = cur.execute(
+        "SELECT nse_symbol FROM name_to_symbol WHERE company_name = ?",
+        (company_name.strip().upper(),),
+    ).fetchone()
+    conn.close()
+    return row["nse_symbol"] if row else None
+
+
+def save_name_to_symbol_mapping(company_name: str, nse_symbol: str) -> None:
+    """
+    Save a mapping from company name to NSE symbol.
+    """
+    conn = connect_db()
+    cur = conn.cursor()
+    ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        """
+        INSERT INTO name_to_symbol(company_name, nse_symbol, last_resolved_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(company_name) DO UPDATE SET
+            nse_symbol = excluded.nse_symbol,
+            last_resolved_at = excluded.last_resolved_at
+        """,
+        (company_name.strip().upper(), nse_symbol.upper(), ts),
+    )
+    conn.commit()
+    conn.close()
+
+
+def resolve_symbol_from_name_with_gemini(company_name: str) -> Optional[str]:
+    """
+    Use Gemini to resolve a company name to its NSE trading symbol.
+    
+    Args:
+        company_name: The company name (e.g., "Reliance Industries", "HDFC Bank")
+    
+    Returns: NSE symbol (e.g., "RELIANCE", "HDFCBANK") or None if resolution fails
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return None
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+
+    prompt = f"""
+You are helping to map Indian company names to their NSE (National Stock Exchange) trading symbols.
+
+Given the company name: "{company_name}"
+
+Return ONLY the NSE trading symbol (ticker) for this company. The symbol should be:
+- Uppercase
+- No spaces or special characters
+- The official NSE trading symbol
+
+Examples:
+- "Reliance Industries" -> "RELIANCE"
+- "HDFC Bank" -> "HDFCBANK"
+- "Tata Consultancy Services" -> "TCS"
+- "Infosys" -> "INFY"
+- "Bharti Airtel" -> "BHARTIARTL"
+
+Rules:
+- Return ONLY the symbol string, no extra words, no markdown, no quotes, no explanations.
+- If the company is not listed on NSE or you're unsure, return "NOT_FOUND"
+- Focus on Indian companies listed on NSE (National Stock Exchange of India)
+"""
+
+    try:
+        resp = model.generate_content(prompt)
+        symbol = (resp.text or "").strip()
+        # Clean up quotes if the model added them
+        symbol = symbol.strip("\"' ")
+        symbol = symbol.upper()
+        
+        # Validate it looks like a symbol (not "NOT_FOUND" or empty)
+        if symbol and symbol != "NOT_FOUND" and len(symbol) >= 2 and len(symbol) <= 20:
+            return symbol
+        return None
+    except Exception as e:
+        print(f"Error resolving symbol from name '{company_name}': {e}")
+        return None
+
+
+def is_likely_symbol(input_str: str) -> bool:
+    """
+    Heuristic to determine if input is likely a symbol vs a company name.
+    
+    Symbols are typically:
+    - Short (2-15 characters)
+    - Uppercase
+    - No spaces
+    - Alphanumeric only
+    
+    Names are typically:
+    - Longer (15+ characters)
+    - Have spaces
+    - Mixed case
+    - May have special characters
+    """
+    cleaned = input_str.strip()
+    
+    # If it has spaces, it's likely a name
+    if ' ' in cleaned:
+        return False
+    
+    # If it's very long, it's likely a name
+    if len(cleaned) > 20:
+        return False
+    
+    # If it's all uppercase and short, likely a symbol
+    if cleaned.isupper() and len(cleaned) <= 15:
+        return True
+    
+    # If it's short and alphanumeric, likely a symbol
+    if len(cleaned) <= 10 and cleaned.replace('_', '').replace('-', '').isalnum():
+        return True
+    
+    # Otherwise, treat as name
+    return False
+
+
+def resolve_input_to_symbol(input_str: str) -> str:
+    """
+    Resolve user input (either symbol or company name) to an NSE symbol.
+    
+    Args:
+        input_str: Either a symbol (e.g., "RELIANCE") or company name (e.g., "Reliance Industries")
+    
+    Returns: NSE symbol (uppercase)
+    
+    Raises HTTPException if resolution fails.
+    """
+    normalized = input_str.strip()
+    
+    # Check if it looks like a symbol
+    if is_likely_symbol(normalized):
+        return normalized.upper()
+    
+    # It's likely a company name - check cache first
+    cached_symbol = get_symbol_from_name(normalized)
+    if cached_symbol:
+        return cached_symbol
+    
+    # Try to resolve using Gemini
+    resolved_symbol = resolve_symbol_from_name_with_gemini(normalized)
+    if resolved_symbol:
+        # Save the mapping for future use
+        save_name_to_symbol_mapping(normalized, resolved_symbol)
+        return resolved_symbol
+    
+    # Resolution failed
+    raise HTTPException(
+        status_code=404,
+        detail=f"Could not resolve company name '{normalized}' to an NSE symbol. Please try using the NSE trading symbol directly (e.g., 'RELIANCE', 'HDFCBANK')."
+    )
 
 
 def save_symbol_mapping(input_symbol: str, screener_symbol: str) -> None:
@@ -576,7 +752,7 @@ def resolve_screener_symbol_with_gemini(input_symbol: str) -> Optional[str]:
         return None
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
 You are helping to map Indian stock tickers to Screener.in company URLs.
@@ -1599,30 +1775,70 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize scheduler for daily symbol index refresh
+scheduler = BackgroundScheduler()
+
+
+def scheduled_refresh_symbol_index() -> None:
+    """
+    Scheduled task to refresh symbol index daily.
+    Runs silently in the background and logs errors without raising exceptions.
+    """
+    try:
+        print(f"[{datetime.utcnow()}] Starting scheduled symbol index refresh...")
+        count = refresh_symbol_index()
+        print(f"[{datetime.utcnow()}] Symbol index refresh completed. Upserted {count} symbols.")
+    except Exception as e:
+        print(f"[{datetime.utcnow()}] Error during scheduled symbol index refresh: {e}")
+        # Don't raise - this is a background task
+
 
 @app.on_event("startup")
 def startup_event() -> None:
     init_db()
-    # Optionally refresh symbol index at startup. This can be commented out if
-    # you prefer to trigger it manually via the /refresh-index endpoint.
+    # Refresh symbol index at startup
     try:
+        print(f"[{datetime.utcnow()}] Refreshing symbol index at startup...")
         refresh_symbol_index()
+        print(f"[{datetime.utcnow()}] Startup symbol index refresh completed.")
     except HTTPException:
         # Don't block startup if Groww CSV is temporarily unavailable.
-        pass
+        print(f"[{datetime.utcnow()}] Startup symbol index refresh failed (non-blocking).")
+    
+    # Schedule daily refresh at 2 AM UTC (7:30 AM IST)
+    scheduler.add_job(
+        scheduled_refresh_symbol_index,
+        trigger=CronTrigger(hour=2, minute=0),  # 2 AM UTC = 7:30 AM IST
+        id='daily_symbol_refresh',
+        name='Daily Symbol Index Refresh',
+        replace_existing=True
+    )
+    scheduler.start()
+    print(f"[{datetime.utcnow()}] Scheduled daily symbol index refresh at 2:00 AM UTC (7:30 AM IST)")
+
+
+@app.on_event("shutdown")
+def shutdown_event() -> None:
+    """Shutdown scheduler gracefully."""
+    if scheduler.running:
+        scheduler.shutdown()
+        print(f"[{datetime.utcnow()}] Scheduler shut down.")
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze_stock(req: AnalyzeRequest) -> AnalyzeResponse:
+    # 0. Resolve input (symbol or company name) to NSE symbol
+    resolved_symbol = resolve_input_to_symbol(req.symbol)
+    
     # 1. Scrape latest data (with Gemini fallback for Screener slug)
-    screener_symbol = ensure_latest_data_for_symbol(req.symbol)
+    screener_symbol = ensure_latest_data_for_symbol(resolved_symbol)
 
     # 2. Load from DB + derived metrics
-    db_data = load_db_data(req.symbol, screener_symbol)
+    db_data = load_db_data(resolved_symbol, screener_symbol)
     derived = compute_derived_metrics(db_data)
 
     # 3. External context
-    perplexity_ctx = fetch_perplexity_context(req.symbol, screener_symbol)
+    perplexity_ctx = fetch_perplexity_context(resolved_symbol, screener_symbol)
 
     # 4. LLM report + verdict
     llm_result = generate_report_with_openai(
@@ -1637,7 +1853,7 @@ def analyze_stock(req: AnalyzeRequest) -> AnalyzeResponse:
     )
 
     return AnalyzeResponse(
-        symbol=req.symbol.upper(),
+        symbol=resolved_symbol,
         screener_symbol=screener_symbol,
         horizon_years=req.horizon_years,
         last_updated=last_updated,

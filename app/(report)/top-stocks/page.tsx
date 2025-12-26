@@ -109,8 +109,13 @@ export default function TopStocksPage() {
   // Fetch live prices when stocks are loaded
   useEffect(() => {
     if (stocks.length > 0) {
-      const symbols = stocks.map(s => s.symbol);
-      fetchLivePrices(symbols);
+      // Filter out N/A symbols since they can't be used for price lookup
+      const symbols = stocks
+        .map(s => s.symbol)
+        .filter(symbol => symbol && symbol.toUpperCase() !== 'N/A');
+      if (symbols.length > 0) {
+        fetchLivePrices(symbols);
+      }
     }
   }, [stocks]);
 
@@ -119,8 +124,13 @@ export default function TopStocksPage() {
     if (stocks.length === 0) return;
     
     const interval = setInterval(() => {
-      const symbols = stocks.map(s => s.symbol);
-      fetchLivePrices(symbols);
+      // Filter out N/A symbols since they can't be used for price lookup
+      const symbols = stocks
+        .map(s => s.symbol)
+        .filter(symbol => symbol && symbol.toUpperCase() !== 'N/A');
+      if (symbols.length > 0) {
+        fetchLivePrices(symbols);
+      }
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
@@ -257,7 +267,11 @@ export default function TopStocksPage() {
               const hasLivePrice = liveQuote !== undefined && liveQuote.ltp !== null && liveQuote.ltp !== undefined;
               
               const handleStockClick = () => {
-                router.push(`/report-gen?symbol=${encodeURIComponent(stock.symbol)}`);
+                // If symbol is N/A, use company name instead
+                const searchTerm = stock.symbol && stock.symbol.toUpperCase() !== 'N/A' 
+                  ? stock.symbol 
+                  : stock.name;
+                router.push(`/report-gen?symbol=${encodeURIComponent(searchTerm)}`);
               };
               
               return (
