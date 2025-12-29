@@ -2,6 +2,7 @@ import { ShinyButton } from '@/components/magicui/shiny-button';
 import { useState } from 'react';
 import { Report } from '../../../../context/ReportContext';
 import { downloadReportAsText } from '../../../../lib/exportReport';
+import { FileText } from "lucide-react";
 
 interface ReportDetailViewProps {
   selectedReport: Report | null;

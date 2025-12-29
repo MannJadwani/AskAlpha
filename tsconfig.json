@@ -23,5 +23,8 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", ".next/types/**/*.ts", "app/api/plan-details/[id]"],
-  "exclude": ["node_modules"]
+    "exclude": [
+    "node_modules",
+    "alpha/alphaConsole"
+  ]
 }
